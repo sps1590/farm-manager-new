@@ -1,4 +1,5 @@
 import "server-only";
+import { redirect } from "next/navigation";
 import { requireUser } from "./auth";
 import type { Module, PermAction, SessionUser } from "./types";
 
@@ -15,13 +16,17 @@ export function hasPermission(
   return user.permissions[module]?.[action] ?? false;
 }
 
+// Redirects (rather than throws) on failure -- this runs both at the top of
+// gated pages (a raw thrown error would surface Next's generic crash screen
+// for what's really just "you can't see this") and inside Server Actions
+// (a quiet redirect is the right response to a bypassed-UI/forged request).
 export async function requirePermission(
   module: Module,
   action: PermAction
 ): Promise<SessionUser> {
   const user = await requireUser();
   if (!hasPermission(user, module, action)) {
-    throw new Error("FORBIDDEN");
+    redirect("/dashboard");
   }
   return user;
 }
@@ -29,7 +34,7 @@ export async function requirePermission(
 export async function requireOwner(): Promise<SessionUser> {
   const user = await requireUser();
   if (user.role !== "owner") {
-    throw new Error("FORBIDDEN");
+    redirect("/dashboard");
   }
   return user;
 }
