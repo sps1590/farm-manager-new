@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useActionState, useState } from "react";
 import { loginAction, type LoginState } from "@/lib/actions/auth";
 import { t } from "@/lib/i18n";
@@ -39,12 +40,12 @@ export default function LoginPage() {
           </h1>
           <form action={formAction} className="space-y-4">
             <div>
-              <label className="label" htmlFor="username">
+              <label className="label" htmlFor="identifier">
                 {t(lang, "login.username")}
               </label>
               <input
-                id="username"
-                name="username"
+                id="identifier"
+                name="identifier"
                 type="text"
                 autoComplete="username"
                 required
@@ -76,7 +77,12 @@ export default function LoginPage() {
             </button>
           </form>
         </div>
-        <p className="mt-4 text-center text-xs text-muted">
+        <p className="mt-4 text-center text-sm">
+          <Link href="/register" className="text-primary hover:underline">
+            {t(lang, "login.registerLink")}
+          </Link>
+        </p>
+        <p className="mt-2 text-center text-xs text-muted">
           {t(lang, "login.defaultHint")}
         </p>
       </div>

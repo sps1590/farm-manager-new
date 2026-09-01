@@ -42,14 +42,29 @@ async function seedSpecies() {
   }
 }
 
-async function seedDefaultOwner() {
+async function seedDefaultFarmAndOwner() {
+  // Rows created before multi-tenancy existed (or left over from a partially
+  // applied migration) have farm_id IS NULL -- back-fill those into one
+  // Default Farm instead of inserting a fresh owner row, which would collide
+  // with the already-unique username/email/phone.
+  const orphaned = await sql`SELECT COUNT(*)::int as c FROM users WHERE farm_id IS NULL`;
+  if ((orphaned[0] as { c: number }).c > 0) {
+    const farmRows = await sql`INSERT INTO farms (name) VALUES ('Default Farm') RETURNING id`;
+    const farmId = (farmRows[0] as { id: number }).id;
+    await sql`UPDATE users SET farm_id = ${farmId} WHERE farm_id IS NULL`;
+    return;
+  }
+
   const existing = await sql`SELECT COUNT(*)::int as c FROM users`;
   if ((existing[0] as { c: number }).c > 0) return;
 
+  // Fresh install -- no users at all yet, seed the default test owner.
+  const farmRows = await sql`INSERT INTO farms (name) VALUES ('Default Farm') RETURNING id`;
+  const farmId = (farmRows[0] as { id: number }).id;
   const passwordHash = bcrypt.hashSync("farm1234", 10);
   await sql`
-    INSERT INTO users (username, password_hash, name, role, language)
-    VALUES ('owner', ${passwordHash}, 'খামারের মালিক', 'owner', 'bn')
+    INSERT INTO users (farm_id, username, password_hash, name, role, language)
+    VALUES (${farmId}, 'owner', ${passwordHash}, 'খামারের মালিক', 'owner', 'bn')
   `;
 }
 
@@ -58,7 +73,7 @@ async function ensureSchema(): Promise<void> {
     await sql.query(statement);
   }
   await seedSpecies();
-  await seedDefaultOwner();
+  await seedDefaultFarmAndOwner();
 }
 
 export async function getDb() {

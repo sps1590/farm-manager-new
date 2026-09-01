@@ -1,9 +1,33 @@
-export type Role = "owner" | "employee";
+// Roles are free text: a fixed set of presets (see RolePreset below) plus any
+// custom label an owner types in. "owner" is reserved -- only the
+// registration flow may create a user with this role; team-management code
+// must never let an owner assign it to someone else.
+export type Role = string;
+export const RESERVED_OWNER_ROLE = "owner";
+export type RolePreset = "owner" | "manager" | "employee";
+
 export type Language = "en" | "bn";
+
+export type Module = "batches" | "purchases" | "sales" | "medical";
+export const MODULES: Module[] = ["batches", "purchases", "sales", "medical"];
+export type PermAction = "view" | "create" | "edit" | "delete";
+export type ModulePermissions = Record<PermAction, boolean>;
+export type PermissionsMap = Record<Module, ModulePermissions>;
+
+export interface FarmRow {
+  id: number;
+  name: string;
+  contact_email: string | null;
+  contact_phone: string | null;
+  created_at: string;
+}
 
 export interface UserRow {
   id: number;
-  username: string;
+  farm_id: number;
+  username: string | null;
+  email: string | null;
+  phone: string | null;
   password_hash: string;
   name: string;
   role: Role;
@@ -13,10 +37,14 @@ export interface UserRow {
 
 export interface SessionUser {
   id: number;
-  username: string;
+  farm_id: number;
+  username: string | null;
+  email: string | null;
+  phone: string | null;
   name: string;
   role: Role;
   language: Language;
+  permissions: PermissionsMap;
 }
 
 export interface SpeciesRow {

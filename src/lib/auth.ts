@@ -3,21 +3,69 @@ import { cookies } from "next/headers";
 import crypto from "node:crypto";
 import bcrypt from "bcryptjs";
 import { getDb } from "./db";
-import type { SessionUser, UserRow } from "./types";
+import type {
+  Module,
+  PermissionsMap,
+  SessionUser,
+  UserRow,
+} from "./types";
 
 const SESSION_COOKIE = "farm_session";
 const SESSION_DAYS = 30;
 
-export async function verifyLogin(
-  username: string,
-  password: string
+const EMPTY_PERMISSIONS: PermissionsMap = {
+  batches: { view: false, create: false, edit: false, delete: false },
+  purchases: { view: false, create: false, edit: false, delete: false },
+  sales: { view: false, create: false, edit: false, delete: false },
+  medical: { view: false, create: false, edit: false, delete: false },
+};
+
+async function loadPermissions(userId: number): Promise<PermissionsMap> {
+  const db = await getDb();
+  const rows = await db`
+    SELECT module, can_view, can_create, can_edit, can_delete
+    FROM user_permissions WHERE user_id = ${userId}
+  `;
+  const permissions: PermissionsMap = {
+    batches: { ...EMPTY_PERMISSIONS.batches },
+    purchases: { ...EMPTY_PERMISSIONS.purchases },
+    sales: { ...EMPTY_PERMISSIONS.sales },
+    medical: { ...EMPTY_PERMISSIONS.medical },
+  };
+  for (const r of rows as unknown as Array<{
+    module: Module;
+    can_view: boolean;
+    can_create: boolean;
+    can_edit: boolean;
+    can_delete: boolean;
+  }>) {
+    permissions[r.module] = {
+      view: r.can_view,
+      create: r.can_create,
+      edit: r.can_edit,
+      delete: r.can_delete,
+    };
+  }
+  return permissions;
+}
+
+// Looks up a user by username, email, or phone -- whichever the login form's
+// single "identifier" field was filled with. Returns null (not an error) when
+// nothing matches, so the caller can redirect to /register instead of
+// treating "unknown identifier" the same as "wrong password".
+export async function findUserByIdentifier(
+  identifier: string
 ): Promise<UserRow | null> {
   const db = await getDb();
-  const rows = await db`SELECT * FROM users WHERE username = ${username}`;
-  const user = rows[0] as unknown as UserRow | undefined;
-  if (!user) return null;
-  const ok = bcrypt.compareSync(password, user.password_hash);
-  return ok ? user : null;
+  const rows = await db`
+    SELECT * FROM users
+    WHERE username = ${identifier} OR email = ${identifier} OR phone = ${identifier}
+  `;
+  return (rows[0] as unknown as UserRow) ?? null;
+}
+
+export function checkPassword(user: UserRow, password: string): boolean {
+  return bcrypt.compareSync(password, user.password_hash);
 }
 
 export async function createSessionForUser(userId: number): Promise<string> {
@@ -56,12 +104,22 @@ export async function getSessionUser(): Promise<SessionUser | null> {
 
   const db = await getDb();
   const rows = await db`
-    SELECT u.id, u.username, u.name, u.role, u.language, s.expires_at
+    SELECT u.id, u.farm_id, u.username, u.email, u.phone, u.name, u.role, u.language, s.expires_at
     FROM sessions s JOIN users u ON u.id = s.user_id
     WHERE s.id = ${sid}
   `;
   const row = rows[0] as unknown as
-    | (SessionUser & { expires_at: string })
+    | {
+        id: number;
+        farm_id: number;
+        username: string | null;
+        email: string | null;
+        phone: string | null;
+        name: string;
+        role: string;
+        language: "en" | "bn";
+        expires_at: string;
+      }
     | undefined;
 
   if (!row) return null;
@@ -70,12 +128,18 @@ export async function getSessionUser(): Promise<SessionUser | null> {
     return null;
   }
 
+  const permissions = await loadPermissions(row.id);
+
   return {
     id: row.id,
+    farm_id: row.farm_id,
     username: row.username,
+    email: row.email,
+    phone: row.phone,
     name: row.name,
     role: row.role,
     language: row.language,
+    permissions,
   };
 }
 
