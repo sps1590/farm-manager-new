@@ -2,178 +2,211 @@
 
 This file is the single source of truth for where this project stands. Read
 it first before doing any further work here — whether that's you, a future
-session, or a developer you hand this to. Update it whenever you finish or
-start a phase of work.
+session, or a developer you hand this to. **Update it whenever you finish a
+feature or change the schema/architecture** — this is also required by
+`CLAUDE.md`.
 
 ## What this is
 
 Software for Shahriar's farm business, based on handwritten notes dated
 1 Sep 2026 ("IDEA #01"). The plan: start with 200-500 ducks on village land,
-grow toward chickens, pigeons/quail, fish, vegetables and cows, hire one
-on-site worker, run CCTV across the farm, and manage everything (stock,
-sales, purchases, medical/vaccination records, employee pay, expenses)
-through one piece of software that can be monitored remotely and eventually
-gets AI-assisted forecasting.
+grow toward chickens, pigeons/quail, fish, vegetables and cows, hire staff,
+run CCTV across the farm, and manage everything (stock, sales, purchases,
+medical/vaccination records, employee pay, expenses) through one piece of
+software that can be monitored remotely and eventually gets AI-assisted
+forecasting. It's now multi-tenant: any number of independent farms/companies
+can register and use the same deployment, each with their own team and data.
 
-## Decisions locked in with the user (2026-09-01)
+## Decisions locked in with the user
 
 - **Platform**: web app, built to also work well as an installable
   mobile-friendly PWA (not a separate native app).
 - **Build approach**: phased MVP. Ship a working core first, add
   employee/payroll, expense analytics, AI forecasting, and CCTV in later
   phases rather than trying to build everything before anything works.
-- **Species scope**: multi-species from day one. The data model treats duck,
-  chicken, pigeon/quail, fish, vegetable, and cow as first-class categories,
-  even though only ducks are stocked right now.
+- **Species scope**: multi-species from day one. Duck, chicken,
+  pigeon/quail, fish, vegetable, and cow are first-class categories.
 - **Language**: bilingual UI, Bengali and English, toggle in the sidebar
   (persisted per user account).
-- **Deployment target**: not decided yet with the user. The app currently
-  runs as a standard Next.js app against a local SQLite file — see "Running
-  this project" below. Revisit hosting once Phase 1 is reviewed.
+- **Deployment**: Vercel, with Postgres (Neon, via Vercel's Storage
+  integration) as the database. Multi-tenant: the first person for a farm
+  self-registers and becomes that farm's owner (2026-09-01).
+- **Multi-tenancy & roles** (2026-09-01): every farm/company gets one `farms`
+  row; every login account belongs to exactly one farm (`users.farm_id`).
+  Roles are free text — Manager/Employee presets plus a custom label — with
+  `owner` reserved for the farm's creator. Non-owner access is controlled by
+  a separate view/create/edit/delete permission per module (Batches,
+  Purchases, Sales, Medical), set by the owner per team member. Team/user
+  management itself is always owner-only and is never part of the
+  configurable permission matrix (prevents privilege escalation).
 
 ## Tech stack (and why)
 
 - **Next.js 16 (App Router) + TypeScript + React 19** — one codebase for
   both server and UI, Server Actions remove the need for a separate API
   layer for CRUD.
-- **Database: SQLite via Node's built-in `node:sqlite`, NOT Prisma.**
-  Prisma was tried first but its `prisma init`/engine download needs to
-  fetch a schema-engine binary from `binaries.prisma.sh`, which this sandbox's
-  network policy blocked (`403 Forbidden`). Node 22's built-in `node:sqlite`
-  module needs no network access and no native build step, so the whole
-  data layer is hand-written SQL in `src/lib/schema.sql` + `src/lib/db.ts` +
-  `src/lib/repo.ts` (reads) + `src/lib/actions/*.ts` (writes, as Server
-  Actions). If a future session has unrestricted network access and wants
-  a proper ORM instead, swapping this out is a contained, one-layer change
-  (schema.sql already documents the full table structure to port).
+- **Database: Postgres via Neon (`@neondatabase/serverless`), NOT Prisma,
+  NOT `node:sqlite` anymore.** The app started on `node:sqlite` (see git
+  history), which was a fine local-dev choice but doesn't work on Vercel —
+  serverless functions have an ephemeral, mostly-read-only filesystem, so a
+  file-backed SQLite database resets on every cold start. Migrated to Neon
+  Postgres (2026-09-01), provisioned via Vercel's Storage tab → Neon
+  integration, which auto-injects a `DATABASE_URL` env var. `@vercel/postgres`
+  was considered but is deprecated in favor of `@neondatabase/serverless`
+  (the `neon()` HTTP client), which is what's used. The whole data layer is
+  hand-written SQL: `src/lib/schema.ts` (DDL, run idempotently on every cold
+  start via `IF NOT EXISTS` / `ADD COLUMN IF NOT EXISTS`) + `src/lib/db.ts`
+  (connection + seeding) + `src/lib/repo.ts` (reads) + `src/lib/actions/*.ts`
+  (writes, as Server Actions).
+  - **Known limitation**: the Neon HTTP driver has no real cross-statement
+    transaction (no `BEGIN`/`COMMIT` spanning two `sql` calls). Registration
+    (farm insert, then owner-user insert) handles this by validating
+    up-front and compensating with a manual `DELETE` of the farm row if the
+    user insert fails, rather than a true transaction. Acceptable for now;
+    revisit with Neon's Pool/websocket client if this becomes a real
+    consistency problem.
 - **Tailwind CSS v4** for styling, plain CSS custom properties for the
   theme (`src/app/globals.css`) — no component library, kept intentionally
   simple.
-- **Auth**: hand-rolled, not NextAuth/Clerk/etc. Username+password
-  (bcrypt-hashed), a `sessions` table, an httpOnly cookie. Two roles:
-  `owner` and `employee`. Good enough for a single-farm, small-team tool;
-  revisit if multi-farm or SSO ever becomes a requirement.
+- **Auth**: hand-rolled, not NextAuth/Clerk/etc. Login by username, email,
+  or phone (one "identifier" field) + password (bcrypt-hashed), a `sessions`
+  table, an httpOnly cookie. An identifier that matches no user redirects to
+  `/register` instead of showing a generic error (2026-09-01).
+- **RBAC**: `src/lib/permissions.ts` — `hasPermission()` (sync, owner always
+  true), `requirePermission()` / `requireOwner()` (async, throw on failure,
+  same style as `requireUser()`). Permissions are loaded once per request
+  into `SessionUser.permissions` by `getSessionUser()`.
 - **i18n**: no library. `src/lib/i18n.ts` is a flat key → {en, bn} string
   dictionary and a `t(lang, key)` helper. Add a string: add a key to both
-  language blocks.
+  language blocks (TypeScript enforces both objects have the same key set).
+- **Validation**: `zod` (already a dependency) is the standard for new
+  form-input validation, starting with registration/team-management actions.
+  Older actions (batches/purchases/sales/medical) still hand-parse
+  `FormData` — fine as-is, migrate opportunistically rather than as a
+  dedicated task.
 - **PWA**: `public/manifest.json` + `public/icon.svg` + theme-color meta.
   No service worker / offline caching yet (see Known gaps).
 
-## What's built — Phase 1 (done, verified 2026-09-01)
+## What's built
 
-- Auth: login/logout, bcrypt passwords, session cookie, owner/employee
-  roles. Default seeded login: **username `owner`, password `farm1234`**
-  — change this after first sign-in (there's no "change password" UI yet;
-  see Known gaps).
+**Phase 1 — core farm tracking** (done, verified 2026-09-01)
 - Bilingual toggle (Bengali/English), persisted on the user record.
 - Dashboard: per-species summary cards (active batches, current stock,
   30-day purchases/sales/net), upcoming vaccinations/due tasks (next 14
-  days), recent activity feed.
-- Batches (`/batches`): create/list/view/close/delete. Each batch tracks
-  species, breed, source, acquired date, initial vs. current quantity, unit
-  cost, notes, status.
-- Purchases (`/purchases`): category (animal/feed/medicine/utility/
-  equipment/other), item, species, optional linked batch, quantity/unit/
-  unit price/total, vendor, date, notes. **Buying more animals into an
-  existing batch (category=animal + batch selected) automatically
-  increases that batch's current stock.**
-- Sales (`/sales`): item, species, optional linked batch, quantity/unit/
-  unit price/total, buyer, date, notes. **Linking a batch automatically
-  decreases that batch's current stock.**
-- Medical/Vaccination (`/medical`): type (vaccination/treatment/checkup/
-  mortality), title, species, optional batch, quantity affected, event
-  date, next-due date, administered by, cost, notes. **A "mortality"
-  record with a batch and quantity automatically decreases that batch's
-  current stock.** Records with a `next_due_date` inside the next 14 days
-  surface on the dashboard.
+  days), recent activity feed. Visible to every authenticated farm member,
+  not permission-gated (read-only, no mutations).
+- Batches (`/batches`): create/list/view/close/delete.
+- Purchases (`/purchases`): category/item/species/optional batch/
+  quantity/unit/price/vendor/date/notes. Buying animals into an existing
+  batch automatically increases that batch's current stock.
+- Sales (`/sales`): item/species/optional batch/quantity/unit/price/buyer/
+  date/notes. Linking a batch automatically decreases its current stock.
+- Medical/Vaccination (`/medical`): vaccination/treatment/checkup/mortality,
+  species/batch/quantity affected/dates/administered by/cost/notes. A
+  "mortality" record with batch+quantity decreases that batch's stock.
+  Records due within 14 days surface on the dashboard.
 - Six species pre-seeded on first run: duck, chicken, pigeon/quail, fish,
   vegetable, cow (`src/lib/db.ts` → `seedSpecies`).
 - Schema also includes `employees` and `salary_payments` tables (created,
-  unused) so Phase 2 doesn't need a breaking migration.
+  unused) for Phase 2.
 
-All of the above was exercised end-to-end with a scripted Playwright run
-(login → create batch → feed purchase → animal purchase into that batch →
-sale from that batch → vaccination record → confirmed stock math
-300 + 50 − 20 = 330 on both the batch list and the dashboard). Build
-(`npm run build`) and lint (`npm run lint`) both pass clean.
+**Deployment & database migration** (done, verified 2026-09-01)
+- Deployed to Vercel (`farm-manager-gules.vercel.app`), GitHub-connected
+  (`sps1590/farm-manager-new`, `main` branch auto-deploys).
+- Migrated the entire data layer from `node:sqlite` to Postgres (Neon) —
+  see Tech stack above for why.
+
+**Multi-tenant registration, login, and team RBAC** (done, verified
+2026-09-01)
+- `/register`: public farm/company signup (farm name, your name, email
+  and/or phone, password) — creates a `farms` row and an `owner` user,
+  signs them in immediately.
+- `/login`: identifier (username/email/phone) + password. Unknown
+  identifier → redirect to `/register` (with the typed value prefilled).
+  Wrong password on a known identifier → existing generic error (no
+  enumeration of which field was wrong).
+- `/team` (owner-only): list the farm's login accounts; `/team/new` and
+  `/team/[id]/edit` create/edit a member's name, email/phone, role (Manager/
+  Employee preset or free-text custom label), and per-module view/create/
+  edit/delete permissions via a checkbox matrix. Owner accounts can't be
+  edited or deleted through this UI.
+- Every batches/purchases/sales/medical query and mutation is scoped to
+  `farm_id` from the session (never client input) — one farm can never see
+  or modify another farm's data. `getBatch` 404s (not an error) when a
+  batch id exists but belongs to a different farm.
+- The original `owner`/`farm1234` test login still works, transparently
+  migrated into an auto-created "Default Farm" the first time the updated
+  schema runs against the already-deployed database.
 
 ## What's NOT built yet — future phases
 
-Do these roughly in order; each is independent enough to pick up in its own
-session.
-
 **Phase 2 — people and money**
 - Employee management UI (list/create/edit) over the existing `employees`
-  table.
-- Salary payment tracking UI over the existing `salary_payments` table
-  (mark pending/paid, due-this-month view — could reuse the dashboard's
-  "upcoming" pattern).
-- A dedicated expenses/P&L report page: filter purchases+sales by date
-  range/species/category, show totals, maybe a simple chart.
+  table (HR/payroll — distinct from the `users` login/RBAC table added
+  2026-09-01; intentionally not linked to it).
+- Salary payment tracking UI over `salary_payments`.
+- A dedicated expenses/P&L report page.
 
-**Phase 3 — AI-assisted analytics** (from the notes: "AI capable... analyze
-purchases, feed, utility bills, buying/selling price, forecast next
-investment and timing")
-- Start with straightforward statistics computed from existing
-  purchases/sales data (moving averages, month-over-month cost trends,
-  simple linear forecast) before reaching for an LLM — it's transparent,
-  needs no API key, and is often what "forecast" actually means here.
-- If genuine natural-language insight is wanted on top of that, that's
-  where an LLM call comes in (needs an API key + network egress the user
-  will need to provide/approve).
+**Phase 3 — AI-assisted analytics**
+- Start with straightforward statistics from existing purchases/sales data
+  before reaching for an LLM.
 
 **Phase 4 — CCTV**
-- The notes ask for CCTV monitoring across the farm with remote access
-  through this software. This needs one decision from the user first:
-  what cameras/DVR will actually be installed (RTSP-capable IP cameras
-  vs. a brand's own DVR/app). Until that's known, the honest options are
-  (a) an embedded RTSP viewer (e.g. via an HLS-conversion proxy, since
-  browsers can't play raw RTSP), or (b) a simple link/embed out to
-  whatever the camera vendor's own app/portal provides. Don't build
-  either blind — ask first.
+- Needs a decision from the user on cameras/DVR hardware first.
 
 **Smaller gaps worth closing whenever convenient**
-- No "change password" or "add another user" UI (only the one seeded
-  owner account exists; employee-role accounts have no signup path yet).
-- No pagination on list pages — fine at current data volume, will matter
-  once purchases/sales run into the thousands of rows.
+- No "change password" self-service UI for the logged-in user (owner can
+  set a new password for a team member via `/team/[id]/edit`, but there's
+  no "change my own password" page yet).
+- No email/phone verification on registration or team-member creation
+  (anyone can claim any email/phone at signup time — acceptable for now,
+  revisit if this becomes internet-facing beyond invited farms).
+- `edit` permission is stored and enforced for Purchases/Sales/Medical, but
+  those modules have no edit UI yet (only create + delete) — only Batches
+  has something to "edit" today (status toggle). Wire up edit forms for the
+  others if/when that's actually needed.
+- No pagination on list pages.
 - No CSV/Excel export.
-- No offline support (PWA manifest exists but there's no service worker,
-  so it needs a live connection to the server it's deployed on).
-- No automated tests (Playwright was used for manual/scripted verification
-  during development, not committed as a test suite).
+- No offline support (PWA manifest exists but there's no service worker).
+- No automated tests.
 
 ## Running this project
 
 ```bash
 npm install
-npm run dev     # http://localhost:3000, default login owner / farm1234
+npm run dev     # http://localhost:3000
 ```
 
-`npm run build && npm start` for a production run. The SQLite file lives at
-`data/farm.db` (created automatically on first request that touches the
-database; gitignored — don't commit real farm data). Requires **Node.js
-22.5+** (for `node:sqlite`) — check with `node -v` before running elsewhere.
+Needs a `DATABASE_URL` env var pointing at a Postgres database (Neon or
+otherwise) — either `vercel env pull .env.development.local` (after linking
+the Vercel project locally), or set it by hand in `.env.local`
+(gitignored). `npm run build && npm start` for a production run.
 
-There is currently no live hosted URL — this only runs where you start it
-(this sandbox, or wherever the project folder ends up next). Deploying it
-somewhere the owner can reach from a phone (a small VPS, Railway, a
-Raspberry Pi at the farm, etc.) is an open decision, not yet made.
+Default seeded login on a fresh database: **username `owner`, password
+`farm1234`** (owner of an auto-created "Default Farm") — change this after
+first sign-in, or just register your own farm at `/register` instead.
+
+Live deployment: **https://farm-manager-gules.vercel.app** (Vercel project
+`farm-manager`, GitHub `sps1590/farm-manager-new`, auto-deploys `main`).
+Database: Neon Postgres, provisioned through Vercel's Storage integration.
 
 ## How to resume work in a new session
 
-1. Read this file top to bottom first.
+1. Read this file top to bottom first, then skim `CLAUDE.md` for the
+   coding-structure/security rules.
 2. `cd` into the project, `npm install` if `node_modules` isn't there,
    `npm run dev` and click through the app to see current state.
 3. Check the task list / git log for the last completed phase.
-4. Pick the next unbuilt phase above, or ask the user which they want next
-   — don't assume Phase 2 is wanted just because it's next on this list.
-5. After finishing a phase: run `npm run build` and `npm run lint`, update
-   this file's "What's built" / "What's NOT built yet" sections, commit,
-   and re-package/deliver to the user the same way as before.
+4. Pick the next unbuilt phase above, or ask the user which they want next.
+5. After finishing a phase: run `npm run build`, update this file's
+   "What's built" / "What's NOT built yet" sections and the changelog
+   below, commit, and push.
 
-## Git
+## Changelog
 
-This is a git repo (`git init` was run by `create-next-app`). Commit at
-every meaningful checkpoint so `git log` on its own tells the resumption
-story even without this file.
+- **2026-09-01** — Deployed to Vercel; migrated database from local
+  `node:sqlite` to Postgres (Neon). Added multi-tenant farm/company
+  registration, identifier-based login with redirect-to-register on unknown
+  identifiers, owner-managed team accounts with per-module CRUD permissions,
+  and farm-scoped data isolation across all existing modules. Added this
+  changelog and the coding-structure/security rules in `CLAUDE.md`.

@@ -14,12 +14,13 @@ npm install
 npm run dev
 ```
 
-Open http://localhost:3000 — default login `owner` / `farm1234` (change
-after first sign-in). Requires Node.js 22.5+ (uses the built-in
-`node:sqlite` module).
+Open http://localhost:3000 — register your own farm at `/register`, or use
+the default seeded login `owner` / `farm1234`. Needs a `DATABASE_URL` env
+var pointing at a Postgres database — see PROGRESS.md.
 
 ## Stack
 
-Next.js 16 (App Router) + TypeScript + Tailwind CSS v4 + SQLite via
-`node:sqlite` (no Prisma, no external database server). See PROGRESS.md
-for why, and for the full feature/roadmap breakdown.
+Next.js 16 (App Router) + TypeScript + Tailwind CSS v4 + Postgres (Neon)
+via `@neondatabase/serverless` (no Prisma). Multi-tenant: any number of
+farms/companies can register on the same deployment. See PROGRESS.md for
+why, and for the full feature/roadmap breakdown.
