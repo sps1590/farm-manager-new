@@ -3,14 +3,14 @@
 import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
 import { getDb } from "../db";
-import { requireUser } from "../auth";
+import { requirePermission } from "../permissions";
 import type { FormState } from "./batches";
 
 export async function createSaleAction(
   _prevState: FormState,
   formData: FormData
 ): Promise<FormState> {
-  const user = await requireUser();
+  const user = await requirePermission("sales", "create");
   const db = await getDb();
 
   const itemName = String(formData.get("item_name") ?? "").trim();
@@ -41,15 +41,15 @@ export async function createSaleAction(
 
   await db`
     INSERT INTO sales
-      (species_id, batch_id, item_name, quantity, unit, unit_price, total_amount, sale_date, buyer, notes, created_by)
-    VALUES (${speciesId}, ${batchId}, ${itemName}, ${quantity}, ${unit}, ${unitPrice}, ${totalAmount}, ${saleDate}, ${buyer}, ${notes}, ${user.id})
+      (farm_id, species_id, batch_id, item_name, quantity, unit, unit_price, total_amount, sale_date, buyer, notes, created_by)
+    VALUES (${user.farm_id}, ${speciesId}, ${batchId}, ${itemName}, ${quantity}, ${unit}, ${unitPrice}, ${totalAmount}, ${saleDate}, ${buyer}, ${notes}, ${user.id})
   `;
 
   if (batchId && quantity) {
     await db`
       UPDATE batches
       SET current_quantity = GREATEST(0, current_quantity - ${quantity}), updated_at = to_char(now(), 'YYYY-MM-DD HH24:MI:SS')
-      WHERE id = ${batchId}
+      WHERE id = ${batchId} AND farm_id = ${user.farm_id}
     `;
   }
 
@@ -60,10 +60,10 @@ export async function createSaleAction(
 }
 
 export async function deleteSaleAction(formData: FormData) {
-  await requireUser();
+  const user = await requirePermission("sales", "delete");
   const db = await getDb();
   const id = Number(formData.get("id"));
-  await db`DELETE FROM sales WHERE id = ${id}`;
+  await db`DELETE FROM sales WHERE id = ${id} AND farm_id = ${user.farm_id}`;
   revalidatePath("/sales");
   revalidatePath("/dashboard");
 }

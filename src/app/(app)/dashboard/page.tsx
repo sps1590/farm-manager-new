@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { getSessionUser } from "@/lib/auth";
+import { requireUser } from "@/lib/auth";
 import { dashboardSummary, listUpcomingMedical, recentActivity, listSpecies } from "@/lib/repo";
 import { t } from "@/lib/i18n";
 function fmtAmount(n: number) {
@@ -7,11 +7,11 @@ function fmtAmount(n: number) {
 }
 
 export default async function DashboardPage() {
-  const user = await getSessionUser();
-  const lang = user!.language;
-  const summary = await dashboardSummary();
-  const upcoming = await listUpcomingMedical(14);
-  const activity = await recentActivity(8);
+  const user = await requireUser();
+  const lang = user.language;
+  const summary = await dashboardSummary(user.farm_id);
+  const upcoming = await listUpcomingMedical(user.farm_id, 14);
+  const activity = await recentActivity(user.farm_id, 8);
   const speciesList = await listSpecies();
   const speciesById = Object.fromEntries(speciesList.map((s) => [s.id, s]));
 

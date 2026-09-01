@@ -3,7 +3,7 @@
 import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
 import { getDb } from "../db";
-import { requireUser } from "../auth";
+import { requirePermission } from "../permissions";
 
 export interface FormState {
   error?: string;
@@ -13,7 +13,7 @@ export async function createBatchAction(
   _prevState: FormState,
   formData: FormData
 ): Promise<FormState> {
-  const user = await requireUser();
+  const user = await requirePermission("batches", "create");
   const db = await getDb();
 
   const speciesId = Number(formData.get("species_id"));
@@ -33,8 +33,8 @@ export async function createBatchAction(
 
   await db`
     INSERT INTO batches
-      (species_id, name, breed, source, acquired_date, initial_quantity, current_quantity, unit_cost, notes, created_by)
-    VALUES (${speciesId}, ${name}, ${breed}, ${source}, ${acquiredDate}, ${initialQuantity}, ${initialQuantity}, ${unitCost}, ${notes}, ${user.id})
+      (farm_id, species_id, name, breed, source, acquired_date, initial_quantity, current_quantity, unit_cost, notes, created_by)
+    VALUES (${user.farm_id}, ${speciesId}, ${name}, ${breed}, ${source}, ${acquiredDate}, ${initialQuantity}, ${initialQuantity}, ${unitCost}, ${notes}, ${user.id})
   `;
 
   revalidatePath("/batches");
@@ -43,22 +43,25 @@ export async function createBatchAction(
 }
 
 export async function updateBatchStatusAction(formData: FormData) {
-  await requireUser();
+  const user = await requirePermission("batches", "edit");
   const db = await getDb();
   const id = Number(formData.get("id"));
   const status = String(formData.get("status"));
   if (status !== "active" && status !== "closed") return;
-  await db`UPDATE batches SET status = ${status}, updated_at = to_char(now(), 'YYYY-MM-DD HH24:MI:SS') WHERE id = ${id}`;
+  await db`
+    UPDATE batches SET status = ${status}, updated_at = to_char(now(), 'YYYY-MM-DD HH24:MI:SS')
+    WHERE id = ${id} AND farm_id = ${user.farm_id}
+  `;
   revalidatePath("/batches");
   revalidatePath(`/batches/${id}`);
   revalidatePath("/dashboard");
 }
 
 export async function deleteBatchAction(formData: FormData) {
-  await requireUser();
+  const user = await requirePermission("batches", "delete");
   const db = await getDb();
   const id = Number(formData.get("id"));
-  await db`DELETE FROM batches WHERE id = ${id}`;
+  await db`DELETE FROM batches WHERE id = ${id} AND farm_id = ${user.farm_id}`;
   revalidatePath("/batches");
   revalidatePath("/dashboard");
   redirect("/batches");

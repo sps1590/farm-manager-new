@@ -1,11 +1,11 @@
-import { getSessionUser } from "@/lib/auth";
+import { requirePermission } from "@/lib/permissions";
 import { listSpecies } from "@/lib/repo";
 import { t } from "@/lib/i18n";
 import NewBatchForm from "@/components/forms/NewBatchForm";
 
 export default async function NewBatchPage() {
-  const user = await getSessionUser();
-  const lang = user!.language;
+  const user = await requirePermission("batches", "create");
+  const lang = user.language;
   const species = await listSpecies();
 
   return (

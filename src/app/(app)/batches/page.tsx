@@ -1,14 +1,15 @@
 import Link from "next/link";
-import { getSessionUser } from "@/lib/auth";
+import { requirePermission, hasPermission } from "@/lib/permissions";
 import { listBatches, listSpecies } from "@/lib/repo";
 import { t } from "@/lib/i18n";
 
 export default async function BatchesPage() {
-  const user = await getSessionUser();
-  const lang = user!.language;
-  const batches = await listBatches();
+  const user = await requirePermission("batches", "view");
+  const lang = user.language;
+  const batches = await listBatches(user.farm_id);
   const species = await listSpecies();
   const speciesById = Object.fromEntries(species.map((s) => [s.id, s]));
+  const canCreate = hasPermission(user, "batches", "create");
 
   return (
     <div className="space-y-6">
@@ -17,9 +18,11 @@ export default async function BatchesPage() {
           <h1 className="text-2xl font-bold text-foreground">{t(lang, "batches.title")}</h1>
           <p className="text-sm text-muted">{t(lang, "batches.subtitle")}</p>
         </div>
-        <Link href="/batches/new" className="btn-primary">
-          + {t(lang, "batches.new")}
-        </Link>
+        {canCreate && (
+          <Link href="/batches/new" className="btn-primary">
+            + {t(lang, "batches.new")}
+          </Link>
+        )}
       </div>
 
       {batches.length === 0 ? (

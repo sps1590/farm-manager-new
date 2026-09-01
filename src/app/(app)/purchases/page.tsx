@@ -1,16 +1,18 @@
 import Link from "next/link";
-import { getSessionUser } from "@/lib/auth";
+import { requirePermission, hasPermission } from "@/lib/permissions";
 import { listPurchases, listSpecies } from "@/lib/repo";
 import { deletePurchaseAction } from "@/lib/actions/purchases";
 import { t, type DictKey } from "@/lib/i18n";
 import ConfirmForm from "@/components/forms/ConfirmForm";
 
 export default async function PurchasesPage() {
-  const user = await getSessionUser();
-  const lang = user!.language;
-  const purchases = await listPurchases();
+  const user = await requirePermission("purchases", "view");
+  const lang = user.language;
+  const purchases = await listPurchases(user.farm_id);
   const species = await listSpecies();
   const speciesById = Object.fromEntries(species.map((s) => [s.id, s]));
+  const canCreate = hasPermission(user, "purchases", "create");
+  const canDelete = hasPermission(user, "purchases", "delete");
 
   const total = purchases.reduce((sum, p) => sum + p.total_amount, 0);
 
@@ -21,9 +23,11 @@ export default async function PurchasesPage() {
           <h1 className="text-2xl font-bold text-foreground">{t(lang, "purchases.title")}</h1>
           <p className="text-sm text-muted">{t(lang, "purchases.subtitle")}</p>
         </div>
-        <Link href="/purchases/new" className="btn-primary">
-          + {t(lang, "purchases.new")}
-        </Link>
+        {canCreate && (
+          <Link href="/purchases/new" className="btn-primary">
+            + {t(lang, "purchases.new")}
+          </Link>
+        )}
       </div>
 
       {purchases.length === 0 ? (
@@ -62,15 +66,17 @@ export default async function PurchasesPage() {
                       {t(lang, "common.currency")}{p.total_amount}
                     </td>
                     <td className="px-4 py-2 text-right">
-                      <ConfirmForm
-                        action={deletePurchaseAction}
-                        hiddenFields={{ id: p.id }}
-                        confirmMessage={t(lang, "common.confirmDelete")}
-                      >
-                        <button type="submit" className="text-xs text-danger hover:underline">
-                          {t(lang, "common.delete")}
-                        </button>
-                      </ConfirmForm>
+                      {canDelete && (
+                        <ConfirmForm
+                          action={deletePurchaseAction}
+                          hiddenFields={{ id: p.id }}
+                          confirmMessage={t(lang, "common.confirmDelete")}
+                        >
+                          <button type="submit" className="text-xs text-danger hover:underline">
+                            {t(lang, "common.delete")}
+                          </button>
+                        </ConfirmForm>
+                      )}
                     </td>
                   </tr>
                 );

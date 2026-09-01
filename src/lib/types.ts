@@ -14,6 +14,15 @@ export type PermAction = "view" | "create" | "edit" | "delete";
 export type ModulePermissions = Record<PermAction, boolean>;
 export type PermissionsMap = Record<Module, ModulePermissions>;
 
+export function emptyPermissions(): PermissionsMap {
+  return {
+    batches: { view: false, create: false, edit: false, delete: false },
+    purchases: { view: false, create: false, edit: false, delete: false },
+    sales: { view: false, create: false, edit: false, delete: false },
+    medical: { view: false, create: false, edit: false, delete: false },
+  };
+}
+
 export interface FarmRow {
   id: number;
   name: string;
@@ -138,6 +147,16 @@ export interface MedicalRecordRow {
   notes: string | null;
   created_by: number | null;
   created_at: string;
+}
+
+export interface TeamMemberRow {
+  id: number;
+  name: string;
+  email: string | null;
+  phone: string | null;
+  username: string | null;
+  role: Role;
+  permissions: PermissionsMap;
 }
 
 export interface EmployeeRow {

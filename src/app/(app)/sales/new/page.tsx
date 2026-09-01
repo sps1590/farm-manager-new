@@ -1,13 +1,13 @@
-import { getSessionUser } from "@/lib/auth";
+import { requirePermission } from "@/lib/permissions";
 import { listSpecies, listBatchesForSelect } from "@/lib/repo";
 import { t } from "@/lib/i18n";
 import NewSaleForm from "@/components/forms/NewSaleForm";
 
 export default async function NewSalePage() {
-  const user = await getSessionUser();
-  const lang = user!.language;
+  const user = await requirePermission("sales", "create");
+  const lang = user.language;
   const species = await listSpecies();
-  const batches = await listBatchesForSelect();
+  const batches = await listBatchesForSelect(user.farm_id);
 
   return (
     <div className="max-w-2xl space-y-6">

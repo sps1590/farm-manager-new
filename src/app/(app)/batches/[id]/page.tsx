@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { getSessionUser } from "@/lib/auth";
+import { requirePermission, hasPermission } from "@/lib/permissions";
 import {
   getBatch,
   getSpecies,
@@ -19,15 +19,17 @@ export default async function BatchDetailPage({
 }) {
   const { id } = await params;
   const batchId = Number(id);
-  const user = await getSessionUser();
-  const lang = user!.language;
+  const user = await requirePermission("batches", "view");
+  const lang = user.language;
+  const canEdit = hasPermission(user, "batches", "edit");
+  const canDelete = hasPermission(user, "batches", "delete");
 
-  const batch = await getBatch(batchId);
+  const batch = await getBatch(batchId, user.farm_id);
   if (!batch) notFound();
   const species = await getSpecies(batch.species_id);
-  const purchases = await listPurchasesByBatch(batchId);
-  const sales = await listSalesByBatch(batchId);
-  const medical = await listMedicalByBatch(batchId);
+  const purchases = await listPurchasesByBatch(batchId, user.farm_id);
+  const sales = await listSalesByBatch(batchId, user.farm_id);
+  const medical = await listMedicalByBatch(batchId, user.farm_id);
 
   return (
     <div className="space-y-6">
@@ -46,28 +48,32 @@ export default async function BatchDetailPage({
           </p>
         </div>
         <div className="flex items-center gap-2">
-          <form action={updateBatchStatusAction}>
-            <input type="hidden" name="id" value={batch.id} />
-            <input
-              type="hidden"
-              name="status"
-              value={batch.status === "active" ? "closed" : "active"}
-            />
-            <button type="submit" className="btn-secondary text-sm">
-              {batch.status === "active"
-                ? t(lang, "common.closed")
-                : t(lang, "common.active")}
-            </button>
-          </form>
-          <ConfirmForm
-            action={deleteBatchAction}
-            hiddenFields={{ id: batch.id }}
-            confirmMessage={t(lang, "common.confirmDelete")}
-          >
-            <button type="submit" className="btn-secondary text-sm text-danger">
-              {t(lang, "common.delete")}
-            </button>
-          </ConfirmForm>
+          {canEdit && (
+            <form action={updateBatchStatusAction}>
+              <input type="hidden" name="id" value={batch.id} />
+              <input
+                type="hidden"
+                name="status"
+                value={batch.status === "active" ? "closed" : "active"}
+              />
+              <button type="submit" className="btn-secondary text-sm">
+                {batch.status === "active"
+                  ? t(lang, "common.closed")
+                  : t(lang, "common.active")}
+              </button>
+            </form>
+          )}
+          {canDelete && (
+            <ConfirmForm
+              action={deleteBatchAction}
+              hiddenFields={{ id: batch.id }}
+              confirmMessage={t(lang, "common.confirmDelete")}
+            >
+              <button type="submit" className="btn-secondary text-sm text-danger">
+                {t(lang, "common.delete")}
+              </button>
+            </ConfirmForm>
+          )}
         </div>
       </div>
 

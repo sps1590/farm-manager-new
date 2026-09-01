@@ -1,16 +1,18 @@
 import Link from "next/link";
-import { getSessionUser } from "@/lib/auth";
+import { requirePermission, hasPermission } from "@/lib/permissions";
 import { listSales, listSpecies } from "@/lib/repo";
 import { deleteSaleAction } from "@/lib/actions/sales";
 import { t } from "@/lib/i18n";
 import ConfirmForm from "@/components/forms/ConfirmForm";
 
 export default async function SalesPage() {
-  const user = await getSessionUser();
-  const lang = user!.language;
-  const sales = await listSales();
+  const user = await requirePermission("sales", "view");
+  const lang = user.language;
+  const sales = await listSales(user.farm_id);
   const species = await listSpecies();
   const speciesById = Object.fromEntries(species.map((s) => [s.id, s]));
+  const canCreate = hasPermission(user, "sales", "create");
+  const canDelete = hasPermission(user, "sales", "delete");
 
   const total = sales.reduce((sum, s) => sum + s.total_amount, 0);
 
@@ -21,9 +23,11 @@ export default async function SalesPage() {
           <h1 className="text-2xl font-bold text-foreground">{t(lang, "sales.title")}</h1>
           <p className="text-sm text-muted">{t(lang, "sales.subtitle")}</p>
         </div>
-        <Link href="/sales/new" className="btn-primary">
-          + {t(lang, "sales.new")}
-        </Link>
+        {canCreate && (
+          <Link href="/sales/new" className="btn-primary">
+            + {t(lang, "sales.new")}
+          </Link>
+        )}
       </div>
 
       {sales.length === 0 ? (
@@ -58,15 +62,17 @@ export default async function SalesPage() {
                       {t(lang, "common.currency")}{s.total_amount}
                     </td>
                     <td className="px-4 py-2 text-right">
-                      <ConfirmForm
-                        action={deleteSaleAction}
-                        hiddenFields={{ id: s.id }}
-                        confirmMessage={t(lang, "common.confirmDelete")}
-                      >
-                        <button type="submit" className="text-xs text-danger hover:underline">
-                          {t(lang, "common.delete")}
-                        </button>
-                      </ConfirmForm>
+                      {canDelete && (
+                        <ConfirmForm
+                          action={deleteSaleAction}
+                          hiddenFields={{ id: s.id }}
+                          confirmMessage={t(lang, "common.confirmDelete")}
+                        >
+                          <button type="submit" className="text-xs text-danger hover:underline">
+                            {t(lang, "common.delete")}
+                          </button>
+                        </ConfirmForm>
+                      )}
                     </td>
                   </tr>
                 );

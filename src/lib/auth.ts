@@ -3,22 +3,16 @@ import { cookies } from "next/headers";
 import crypto from "node:crypto";
 import bcrypt from "bcryptjs";
 import { getDb } from "./db";
-import type {
-  Module,
-  PermissionsMap,
-  SessionUser,
-  UserRow,
+import {
+  emptyPermissions,
+  type Module,
+  type PermissionsMap,
+  type SessionUser,
+  type UserRow,
 } from "./types";
 
 const SESSION_COOKIE = "farm_session";
 const SESSION_DAYS = 30;
-
-const EMPTY_PERMISSIONS: PermissionsMap = {
-  batches: { view: false, create: false, edit: false, delete: false },
-  purchases: { view: false, create: false, edit: false, delete: false },
-  sales: { view: false, create: false, edit: false, delete: false },
-  medical: { view: false, create: false, edit: false, delete: false },
-};
 
 async function loadPermissions(userId: number): Promise<PermissionsMap> {
   const db = await getDb();
@@ -26,12 +20,7 @@ async function loadPermissions(userId: number): Promise<PermissionsMap> {
     SELECT module, can_view, can_create, can_edit, can_delete
     FROM user_permissions WHERE user_id = ${userId}
   `;
-  const permissions: PermissionsMap = {
-    batches: { ...EMPTY_PERMISSIONS.batches },
-    purchases: { ...EMPTY_PERMISSIONS.purchases },
-    sales: { ...EMPTY_PERMISSIONS.sales },
-    medical: { ...EMPTY_PERMISSIONS.medical },
-  };
+  const permissions = emptyPermissions();
   for (const r of rows as unknown as Array<{
     module: Module;
     can_view: boolean;

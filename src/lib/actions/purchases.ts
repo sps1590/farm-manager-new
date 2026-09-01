@@ -3,7 +3,7 @@
 import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
 import { getDb } from "../db";
-import { requireUser } from "../auth";
+import { requirePermission } from "../permissions";
 import type { PurchaseCategory } from "../types";
 import type { FormState } from "./batches";
 
@@ -20,7 +20,7 @@ export async function createPurchaseAction(
   _prevState: FormState,
   formData: FormData
 ): Promise<FormState> {
-  const user = await requireUser();
+  const user = await requirePermission("purchases", "create");
   const db = await getDb();
 
   const category = String(formData.get("category")) as PurchaseCategory;
@@ -52,8 +52,8 @@ export async function createPurchaseAction(
 
   await db`
     INSERT INTO purchases
-      (species_id, batch_id, category, item_name, quantity, unit, unit_price, total_amount, purchase_date, vendor, notes, created_by)
-    VALUES (${speciesId}, ${batchId}, ${category}, ${itemName}, ${quantity}, ${unit}, ${unitPrice}, ${totalAmount}, ${purchaseDate}, ${vendor}, ${notes}, ${user.id})
+      (farm_id, species_id, batch_id, category, item_name, quantity, unit, unit_price, total_amount, purchase_date, vendor, notes, created_by)
+    VALUES (${user.farm_id}, ${speciesId}, ${batchId}, ${category}, ${itemName}, ${quantity}, ${unit}, ${unitPrice}, ${totalAmount}, ${purchaseDate}, ${vendor}, ${notes}, ${user.id})
   `;
 
   // Buying more animals for an existing batch grows that batch's live stock.
@@ -61,7 +61,7 @@ export async function createPurchaseAction(
     await db`
       UPDATE batches
       SET current_quantity = current_quantity + ${quantity}, updated_at = to_char(now(), 'YYYY-MM-DD HH24:MI:SS')
-      WHERE id = ${batchId}
+      WHERE id = ${batchId} AND farm_id = ${user.farm_id}
     `;
   }
 
@@ -72,10 +72,10 @@ export async function createPurchaseAction(
 }
 
 export async function deletePurchaseAction(formData: FormData) {
-  await requireUser();
+  const user = await requirePermission("purchases", "delete");
   const db = await getDb();
   const id = Number(formData.get("id"));
-  await db`DELETE FROM purchases WHERE id = ${id}`;
+  await db`DELETE FROM purchases WHERE id = ${id} AND farm_id = ${user.farm_id}`;
   revalidatePath("/purchases");
   revalidatePath("/dashboard");
 }

@@ -3,7 +3,7 @@
 import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
 import { getDb } from "../db";
-import { requireUser } from "../auth";
+import { requirePermission } from "../permissions";
 import type { MedicalRecordType } from "../types";
 import type { FormState } from "./batches";
 
@@ -18,7 +18,7 @@ export async function createMedicalRecordAction(
   _prevState: FormState,
   formData: FormData
 ): Promise<FormState> {
-  const user = await requireUser();
+  const user = await requirePermission("medical", "create");
   const db = await getDb();
 
   const recordType = String(formData.get("record_type")) as MedicalRecordType;
@@ -45,15 +45,15 @@ export async function createMedicalRecordAction(
 
   await db`
     INSERT INTO medical_records
-      (species_id, batch_id, record_type, title, event_date, next_due_date, quantity_affected, administered_by, cost, notes, created_by)
-    VALUES (${speciesId}, ${batchId}, ${recordType}, ${title}, ${eventDate}, ${nextDueDate}, ${quantityAffected}, ${administeredBy}, ${cost}, ${notes}, ${user.id})
+      (farm_id, species_id, batch_id, record_type, title, event_date, next_due_date, quantity_affected, administered_by, cost, notes, created_by)
+    VALUES (${user.farm_id}, ${speciesId}, ${batchId}, ${recordType}, ${title}, ${eventDate}, ${nextDueDate}, ${quantityAffected}, ${administeredBy}, ${cost}, ${notes}, ${user.id})
   `;
 
   if (recordType === "mortality" && batchId && quantityAffected) {
     await db`
       UPDATE batches
       SET current_quantity = GREATEST(0, current_quantity - ${quantityAffected}), updated_at = to_char(now(), 'YYYY-MM-DD HH24:MI:SS')
-      WHERE id = ${batchId}
+      WHERE id = ${batchId} AND farm_id = ${user.farm_id}
     `;
   }
 
@@ -64,10 +64,10 @@ export async function createMedicalRecordAction(
 }
 
 export async function deleteMedicalRecordAction(formData: FormData) {
-  await requireUser();
+  const user = await requirePermission("medical", "delete");
   const db = await getDb();
   const id = Number(formData.get("id"));
-  await db`DELETE FROM medical_records WHERE id = ${id}`;
+  await db`DELETE FROM medical_records WHERE id = ${id} AND farm_id = ${user.farm_id}`;
   revalidatePath("/medical");
   revalidatePath("/dashboard");
 }
