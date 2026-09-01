@@ -9,10 +9,10 @@ function fmtAmount(n: number) {
 export default async function DashboardPage() {
   const user = await getSessionUser();
   const lang = user!.language;
-  const summary = dashboardSummary();
-  const upcoming = listUpcomingMedical(14);
-  const activity = recentActivity(8);
-  const speciesList = listSpecies();
+  const summary = await dashboardSummary();
+  const upcoming = await listUpcomingMedical(14);
+  const activity = await recentActivity(8);
+  const speciesList = await listSpecies();
   const speciesById = Object.fromEntries(speciesList.map((s) => [s.id, s]));
 
   return (

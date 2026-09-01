@@ -12,24 +12,21 @@ export async function verifyLogin(
   username: string,
   password: string
 ): Promise<UserRow | null> {
-  const db = getDb();
-  const user = db
-    .prepare("SELECT * FROM users WHERE username = ?")
-    .get(username) as unknown as UserRow | undefined;
+  const db = await getDb();
+  const rows = await db`SELECT * FROM users WHERE username = ${username}`;
+  const user = rows[0] as unknown as UserRow | undefined;
   if (!user) return null;
   const ok = bcrypt.compareSync(password, user.password_hash);
   return ok ? user : null;
 }
 
 export async function createSessionForUser(userId: number): Promise<string> {
-  const db = getDb();
+  const db = await getDb();
   const id = crypto.randomUUID();
   const expiresAt = new Date(
     Date.now() + SESSION_DAYS * 24 * 60 * 60 * 1000
   ).toISOString();
-  db.prepare(
-    "INSERT INTO sessions (id, user_id, expires_at) VALUES (?, ?, ?)"
-  ).run(id, userId, expiresAt);
+  await db`INSERT INTO sessions (id, user_id, expires_at) VALUES (${id}, ${userId}, ${expiresAt})`;
 
   const store = await cookies();
   store.set(SESSION_COOKIE, id, {
@@ -46,8 +43,8 @@ export async function destroySession(): Promise<void> {
   const store = await cookies();
   const sid = store.get(SESSION_COOKIE)?.value;
   if (sid) {
-    const db = getDb();
-    db.prepare("DELETE FROM sessions WHERE id = ?").run(sid);
+    const db = await getDb();
+    await db`DELETE FROM sessions WHERE id = ${sid}`;
   }
   store.delete(SESSION_COOKIE);
 }
@@ -57,20 +54,19 @@ export async function getSessionUser(): Promise<SessionUser | null> {
   const sid = store.get(SESSION_COOKIE)?.value;
   if (!sid) return null;
 
-  const db = getDb();
-  const row = db
-    .prepare(
-      `SELECT u.id, u.username, u.name, u.role, u.language, s.expires_at
-       FROM sessions s JOIN users u ON u.id = s.user_id
-       WHERE s.id = ?`
-    )
-    .get(sid) as unknown as
+  const db = await getDb();
+  const rows = await db`
+    SELECT u.id, u.username, u.name, u.role, u.language, s.expires_at
+    FROM sessions s JOIN users u ON u.id = s.user_id
+    WHERE s.id = ${sid}
+  `;
+  const row = rows[0] as unknown as
     | (SessionUser & { expires_at: string })
     | undefined;
 
   if (!row) return null;
   if (new Date(row.expires_at).getTime() < Date.now()) {
-    db.prepare("DELETE FROM sessions WHERE id = ?").run(sid);
+    await db`DELETE FROM sessions WHERE id = ${sid}`;
     return null;
   }
 
@@ -95,9 +91,6 @@ export async function setUserLanguage(
   userId: number,
   language: "en" | "bn"
 ): Promise<void> {
-  const db = getDb();
-  db.prepare("UPDATE users SET language = ? WHERE id = ?").run(
-    language,
-    userId
-  );
+  const db = await getDb();
+  await db`UPDATE users SET language = ${language} WHERE id = ${userId}`;
 }

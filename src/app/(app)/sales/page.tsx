@@ -8,8 +8,8 @@ import ConfirmForm from "@/components/forms/ConfirmForm";
 export default async function SalesPage() {
   const user = await getSessionUser();
   const lang = user!.language;
-  const sales = listSales();
-  const species = listSpecies();
+  const sales = await listSales();
+  const species = await listSpecies();
   const speciesById = Object.fromEntries(species.map((s) => [s.id, s]));
 
   const total = sales.reduce((sum, s) => sum + s.total_amount, 0);

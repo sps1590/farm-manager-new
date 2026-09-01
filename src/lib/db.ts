@@ -1,23 +1,21 @@
-import { DatabaseSync } from "node:sqlite";
-import fs from "node:fs";
-import path from "node:path";
+import "server-only";
+import { neon } from "@neondatabase/serverless";
 import bcrypt from "bcryptjs";
+import { SCHEMA_STATEMENTS } from "./schema";
 
-// Single shared SQLite connection for the whole server process.
-// Kept on globalThis so Next.js's dev-mode hot-reload doesn't open a fresh
-// connection (and re-run seeding) on every file save.
+// Single shared Postgres (Neon) client for the whole server process.
+// Schema + seed data are ensured once per process and cached on globalThis
+// so Next.js's dev-mode hot-reload doesn't re-run them on every file save.
 
 declare global {
-  var __farmDb: DatabaseSync | undefined;
+  var __farmDbReady: Promise<void> | undefined;
 }
 
-const DATA_DIR = path.join(process.cwd(), "data");
-const DB_PATH = path.join(DATA_DIR, "farm.db");
+export const sql = neon(process.env.DATABASE_URL!);
 
-function seedSpecies(db: DatabaseSync) {
-  const existing = db.prepare("SELECT COUNT(*) as c FROM species").get() as
-    unknown as { c: number };
-  if (existing.c > 0) return;
+async function seedSpecies() {
+  const existing = await sql`SELECT COUNT(*)::int as c FROM species`;
+  if ((existing[0] as { c: number }).c > 0) return;
 
   const species: Array<{
     key: string;
@@ -36,50 +34,37 @@ function seedSpecies(db: DatabaseSync) {
     { key: "cow", name_en: "Cow", name_bn: "গরু", unit_en: "head", unit_bn: "টি", icon: "🐄", sort_order: 6 },
   ];
 
-  const insert = db.prepare(
-    `INSERT INTO species (key, name_en, name_bn, unit_en, unit_bn, icon, sort_order)
-     VALUES (?, ?, ?, ?, ?, ?, ?)`
-  );
   for (const s of species) {
-    insert.run(s.key, s.name_en, s.name_bn, s.unit_en, s.unit_bn, s.icon, s.sort_order);
+    await sql`
+      INSERT INTO species (key, name_en, name_bn, unit_en, unit_bn, icon, sort_order)
+      VALUES (${s.key}, ${s.name_en}, ${s.name_bn}, ${s.unit_en}, ${s.unit_bn}, ${s.icon}, ${s.sort_order})
+    `;
   }
 }
 
-function seedDefaultOwner(db: DatabaseSync) {
-  const existing = db.prepare("SELECT COUNT(*) as c FROM users").get() as
-    unknown as { c: number };
-  if (existing.c > 0) return;
+async function seedDefaultOwner() {
+  const existing = await sql`SELECT COUNT(*)::int as c FROM users`;
+  if ((existing[0] as { c: number }).c > 0) return;
 
   const passwordHash = bcrypt.hashSync("farm1234", 10);
-  db.prepare(
-    `INSERT INTO users (username, password_hash, name, role, language)
-     VALUES (?, ?, ?, 'owner', 'bn')`
-  ).run("owner", passwordHash, "খামারের মালিক");
+  await sql`
+    INSERT INTO users (username, password_hash, name, role, language)
+    VALUES ('owner', ${passwordHash}, 'খামারের মালিক', 'owner', 'bn')
+  `;
 }
 
-function createConnection(): DatabaseSync {
-  if (!fs.existsSync(DATA_DIR)) {
-    fs.mkdirSync(DATA_DIR, { recursive: true });
+async function ensureSchema(): Promise<void> {
+  for (const statement of SCHEMA_STATEMENTS) {
+    await sql.query(statement);
   }
-  const db = new DatabaseSync(DB_PATH);
-  db.exec("PRAGMA journal_mode = WAL;");
-  db.exec("PRAGMA foreign_keys = ON;");
-
-  const schema = fs.readFileSync(
-    path.join(process.cwd(), "src", "lib", "schema.sql"),
-    "utf-8"
-  );
-  db.exec(schema);
-
-  seedSpecies(db);
-  seedDefaultOwner(db);
-
-  return db;
+  await seedSpecies();
+  await seedDefaultOwner();
 }
 
-export function getDb(): DatabaseSync {
-  if (!globalThis.__farmDb) {
-    globalThis.__farmDb = createConnection();
+export async function getDb() {
+  if (!globalThis.__farmDbReady) {
+    globalThis.__farmDbReady = ensureSchema();
   }
-  return globalThis.__farmDb;
+  await globalThis.__farmDbReady;
+  return sql;
 }

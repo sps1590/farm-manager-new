@@ -6,8 +6,8 @@ import NewSaleForm from "@/components/forms/NewSaleForm";
 export default async function NewSalePage() {
   const user = await getSessionUser();
   const lang = user!.language;
-  const species = listSpecies();
-  const batches = listBatchesForSelect();
+  const species = await listSpecies();
+  const batches = await listBatchesForSelect();
 
   return (
     <div className="max-w-2xl space-y-6">

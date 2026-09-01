@@ -22,12 +22,12 @@ export default async function BatchDetailPage({
   const user = await getSessionUser();
   const lang = user!.language;
 
-  const batch = getBatch(batchId);
+  const batch = await getBatch(batchId);
   if (!batch) notFound();
-  const species = getSpecies(batch.species_id);
-  const purchases = listPurchasesByBatch(batchId);
-  const sales = listSalesByBatch(batchId);
-  const medical = listMedicalByBatch(batchId);
+  const species = await getSpecies(batch.species_id);
+  const purchases = await listPurchasesByBatch(batchId);
+  const sales = await listSalesByBatch(batchId);
+  const medical = await listMedicalByBatch(batchId);
 
   return (
     <div className="space-y-6">

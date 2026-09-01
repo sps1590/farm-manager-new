@@ -14,7 +14,7 @@ export async function createBatchAction(
   formData: FormData
 ): Promise<FormState> {
   const user = await requireUser();
-  const db = getDb();
+  const db = await getDb();
 
   const speciesId = Number(formData.get("species_id"));
   const name = String(formData.get("name") ?? "").trim();
@@ -31,22 +31,11 @@ export async function createBatchAction(
     return { error: "Species and batch name are required." };
   }
 
-  db.prepare(
-    `INSERT INTO batches
+  await db`
+    INSERT INTO batches
       (species_id, name, breed, source, acquired_date, initial_quantity, current_quantity, unit_cost, notes, created_by)
-     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
-  ).run(
-    speciesId,
-    name,
-    breed,
-    source,
-    acquiredDate,
-    initialQuantity,
-    initialQuantity,
-    unitCost,
-    notes,
-    user.id
-  );
+    VALUES (${speciesId}, ${name}, ${breed}, ${source}, ${acquiredDate}, ${initialQuantity}, ${initialQuantity}, ${unitCost}, ${notes}, ${user.id})
+  `;
 
   revalidatePath("/batches");
   revalidatePath("/dashboard");
@@ -55,13 +44,11 @@ export async function createBatchAction(
 
 export async function updateBatchStatusAction(formData: FormData) {
   await requireUser();
-  const db = getDb();
+  const db = await getDb();
   const id = Number(formData.get("id"));
   const status = String(formData.get("status"));
   if (status !== "active" && status !== "closed") return;
-  db.prepare(
-    "UPDATE batches SET status = ?, updated_at = datetime('now') WHERE id = ?"
-  ).run(status, id);
+  await db`UPDATE batches SET status = ${status}, updated_at = to_char(now(), 'YYYY-MM-DD HH24:MI:SS') WHERE id = ${id}`;
   revalidatePath("/batches");
   revalidatePath(`/batches/${id}`);
   revalidatePath("/dashboard");
@@ -69,9 +56,9 @@ export async function updateBatchStatusAction(formData: FormData) {
 
 export async function deleteBatchAction(formData: FormData) {
   await requireUser();
-  const db = getDb();
+  const db = await getDb();
   const id = Number(formData.get("id"));
-  db.prepare("DELETE FROM batches WHERE id = ?").run(id);
+  await db`DELETE FROM batches WHERE id = ${id}`;
   revalidatePath("/batches");
   revalidatePath("/dashboard");
   redirect("/batches");

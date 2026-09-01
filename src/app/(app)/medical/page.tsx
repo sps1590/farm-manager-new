@@ -8,8 +8,8 @@ import ConfirmForm from "@/components/forms/ConfirmForm";
 export default async function MedicalPage() {
   const user = await getSessionUser();
   const lang = user!.language;
-  const records = listMedicalRecords();
-  const species = listSpecies();
+  const records = await listMedicalRecords();
+  const species = await listSpecies();
   const speciesById = Object.fromEntries(species.map((s) => [s.id, s]));
 
   return (

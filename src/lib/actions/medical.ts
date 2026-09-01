@@ -19,7 +19,7 @@ export async function createMedicalRecordAction(
   formData: FormData
 ): Promise<FormState> {
   const user = await requireUser();
-  const db = getDb();
+  const db = await getDb();
 
   const recordType = String(formData.get("record_type")) as MedicalRecordType;
   const title = String(formData.get("title") ?? "").trim();
@@ -43,30 +43,18 @@ export async function createMedicalRecordAction(
     return { error: "Type, title, and date are required." };
   }
 
-  db.prepare(
-    `INSERT INTO medical_records
+  await db`
+    INSERT INTO medical_records
       (species_id, batch_id, record_type, title, event_date, next_due_date, quantity_affected, administered_by, cost, notes, created_by)
-     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
-  ).run(
-    speciesId,
-    batchId,
-    recordType,
-    title,
-    eventDate,
-    nextDueDate,
-    quantityAffected,
-    administeredBy,
-    cost,
-    notes,
-    user.id
-  );
+    VALUES (${speciesId}, ${batchId}, ${recordType}, ${title}, ${eventDate}, ${nextDueDate}, ${quantityAffected}, ${administeredBy}, ${cost}, ${notes}, ${user.id})
+  `;
 
   if (recordType === "mortality" && batchId && quantityAffected) {
-    db.prepare(
-      `UPDATE batches
-       SET current_quantity = MAX(0, current_quantity - ?), updated_at = datetime('now')
-       WHERE id = ?`
-    ).run(quantityAffected, batchId);
+    await db`
+      UPDATE batches
+      SET current_quantity = GREATEST(0, current_quantity - ${quantityAffected}), updated_at = to_char(now(), 'YYYY-MM-DD HH24:MI:SS')
+      WHERE id = ${batchId}
+    `;
   }
 
   revalidatePath("/medical");
@@ -77,9 +65,9 @@ export async function createMedicalRecordAction(
 
 export async function deleteMedicalRecordAction(formData: FormData) {
   await requireUser();
-  const db = getDb();
+  const db = await getDb();
   const id = Number(formData.get("id"));
-  db.prepare("DELETE FROM medical_records WHERE id = ?").run(id);
+  await db`DELETE FROM medical_records WHERE id = ${id}`;
   revalidatePath("/medical");
   revalidatePath("/dashboard");
 }

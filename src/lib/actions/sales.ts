@@ -11,7 +11,7 @@ export async function createSaleAction(
   formData: FormData
 ): Promise<FormState> {
   const user = await requireUser();
-  const db = getDb();
+  const db = await getDb();
 
   const itemName = String(formData.get("item_name") ?? "").trim();
   const speciesId = formData.get("species_id")
@@ -39,30 +39,18 @@ export async function createSaleAction(
     return { error: "Total amount must be greater than zero." };
   }
 
-  db.prepare(
-    `INSERT INTO sales
+  await db`
+    INSERT INTO sales
       (species_id, batch_id, item_name, quantity, unit, unit_price, total_amount, sale_date, buyer, notes, created_by)
-     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
-  ).run(
-    speciesId,
-    batchId,
-    itemName,
-    quantity,
-    unit,
-    unitPrice,
-    totalAmount,
-    saleDate,
-    buyer,
-    notes,
-    user.id
-  );
+    VALUES (${speciesId}, ${batchId}, ${itemName}, ${quantity}, ${unit}, ${unitPrice}, ${totalAmount}, ${saleDate}, ${buyer}, ${notes}, ${user.id})
+  `;
 
   if (batchId && quantity) {
-    db.prepare(
-      `UPDATE batches
-       SET current_quantity = MAX(0, current_quantity - ?), updated_at = datetime('now')
-       WHERE id = ?`
-    ).run(quantity, batchId);
+    await db`
+      UPDATE batches
+      SET current_quantity = GREATEST(0, current_quantity - ${quantity}), updated_at = to_char(now(), 'YYYY-MM-DD HH24:MI:SS')
+      WHERE id = ${batchId}
+    `;
   }
 
   revalidatePath("/sales");
@@ -73,9 +61,9 @@ export async function createSaleAction(
 
 export async function deleteSaleAction(formData: FormData) {
   await requireUser();
-  const db = getDb();
+  const db = await getDb();
   const id = Number(formData.get("id"));
-  db.prepare("DELETE FROM sales WHERE id = ?").run(id);
+  await db`DELETE FROM sales WHERE id = ${id}`;
   revalidatePath("/sales");
   revalidatePath("/dashboard");
 }

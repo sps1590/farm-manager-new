@@ -6,8 +6,8 @@ import { t } from "@/lib/i18n";
 export default async function BatchesPage() {
   const user = await getSessionUser();
   const lang = user!.language;
-  const batches = listBatches();
-  const species = listSpecies();
+  const batches = await listBatches();
+  const species = await listSpecies();
   const speciesById = Object.fromEntries(species.map((s) => [s.id, s]));
 
   return (
