@@ -27,7 +27,7 @@ export default async function TeamPage() {
         <table className="w-full min-w-[640px] text-sm">
           <thead>
             <tr className="border-b border-border text-left text-muted">
-              <th className="px-4 py-2 font-medium">{t(lang, "register.yourName")}</th>
+              <th className="px-4 py-2 font-medium">{t(lang, "team.memberName")}</th>
               <th className="px-4 py-2 font-medium">{t(lang, "team.role")}</th>
               <th className="px-4 py-2 font-medium">{t(lang, "login.username")}</th>
               <th className="px-4 py-2 font-medium" />
