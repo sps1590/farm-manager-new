@@ -32,6 +32,8 @@ export interface FarmRow {
   created_at: string;
 }
 
+export type PartnerStatus = "active" | "inactive";
+
 export interface UserRow {
   id: number;
   farm_id: number;
@@ -43,6 +45,7 @@ export interface UserRow {
   role: Role;
   is_partner: boolean;
   profit_share_percent: number;
+  partner_status: PartnerStatus;
   language: Language;
   created_at: string;
 }
@@ -185,6 +188,7 @@ export interface PartnerSummary {
   netInvestment: number;
   ownershipPercent: number;
   profitSharePercent: number;
+  status: PartnerStatus;
 }
 
 export interface EmployeeRow {

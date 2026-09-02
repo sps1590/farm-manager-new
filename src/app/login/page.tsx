@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { useActionState, useState } from "react";
 import { loginAction, type LoginState } from "@/lib/actions/auth";
-import { t } from "@/lib/i18n";
+import { t, type DictKey } from "@/lib/i18n";
 import type { Language } from "@/lib/types";
 
 const initialState: LoginState = {};
@@ -66,7 +66,9 @@ export default function LoginPage() {
               />
             </div>
             {state.error && (
-              <p className="text-sm text-danger">{t(lang, "login.error")}</p>
+              <p className="text-sm text-danger">
+                {t(lang, state.error as DictKey)}
+              </p>
             )}
             <button
               type="submit"

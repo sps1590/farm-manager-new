@@ -153,3 +153,34 @@ export async function updateFarmReserveAction(formData: FormData) {
   await db`UPDATE farms SET profit_reserve_percent = ${reserve} WHERE id = ${owner.farm_id}`;
   revalidatePath("/partners");
 }
+
+// Deactivating drops a partner out of the live ownership %/profit-share pool
+// (see fetchPartnerSummaries in repo.ts) and blocks future logins, but keeps
+// their historical ledger intact for records. Existing sessions are killed
+// immediately so access doesn't linger until the cookie expires.
+export async function deactivatePartnerAction(formData: FormData) {
+  const owner = await requireOwner();
+  const db = await getDb();
+  const partnerId = Number(formData.get("partner_id"));
+  await db`
+    UPDATE users SET partner_status = 'inactive'
+    WHERE id = ${partnerId} AND farm_id = ${owner.farm_id} AND is_partner = true
+  `;
+  await db`DELETE FROM sessions WHERE user_id = ${partnerId}`;
+  revalidatePath(`/partners/${partnerId}`);
+  revalidatePath("/partners");
+  revalidatePath("/dashboard");
+}
+
+export async function reactivatePartnerAction(formData: FormData) {
+  const owner = await requireOwner();
+  const db = await getDb();
+  const partnerId = Number(formData.get("partner_id"));
+  await db`
+    UPDATE users SET partner_status = 'active'
+    WHERE id = ${partnerId} AND farm_id = ${owner.farm_id} AND is_partner = true
+  `;
+  revalidatePath(`/partners/${partnerId}`);
+  revalidatePath("/partners");
+  revalidatePath("/dashboard");
+}

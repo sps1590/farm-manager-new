@@ -38,6 +38,10 @@ export async function loginAction(
     return { error: "login.error" };
   }
 
+  if (user.is_partner && user.partner_status === "inactive") {
+    return { error: "login.errorDeactivated" };
+  }
+
   await createSessionForUser(user.id);
   redirect("/dashboard");
 }

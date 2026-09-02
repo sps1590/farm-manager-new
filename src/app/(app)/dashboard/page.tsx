@@ -45,12 +45,16 @@ export default async function DashboardPage() {
               <span className="font-medium text-foreground">
                 {t(lang, "common.currency")}
                 {fmtAmount(
-                  ownerPartners.reduce((sum, p) => sum + Math.max(0, p.netInvestment), 0)
+                  ownerPartners
+                    .filter((p) => p.status === "active")
+                    .reduce((sum, p) => sum + Math.max(0, p.netInvestment), 0)
                 )}
               </span>
               {" · "}
               {t(lang, "partners.partnerCount")}:{" "}
-              <span className="font-medium text-foreground">{ownerPartners.length}</span>
+              <span className="font-medium text-foreground">
+                {ownerPartners.filter((p) => p.status === "active").length}
+              </span>
             </p>
           </div>
           <Link href="/partners" className="btn-secondary text-sm">

@@ -3,7 +3,7 @@ import { redirect } from "next/navigation";
 import { requireUser } from "@/lib/auth";
 import { listPartners, getFarm } from "@/lib/repo";
 import { updateFarmReserveAction } from "@/lib/actions/partners";
-import { t } from "@/lib/i18n";
+import { t, type DictKey } from "@/lib/i18n";
 
 export default async function PartnersPage() {
   const user = await requireUser();
@@ -19,11 +19,15 @@ export default async function PartnersPage() {
     getFarm(user.farm_id),
   ]);
   const reserve = farm?.profit_reserve_percent ?? 0;
-  const totalInvested = partners.reduce(
+  const activePartners = partners.filter((p) => p.status === "active");
+  const totalInvested = activePartners.reduce(
     (sum, p) => sum + Math.max(0, p.netInvestment),
     0
   );
-  const totalShare = partners.reduce((sum, p) => sum + p.profitSharePercent, 0);
+  const totalShare = activePartners.reduce(
+    (sum, p) => sum + p.profitSharePercent,
+    0
+  );
   const distributable = 100 - reserve;
 
   return (
@@ -92,7 +96,7 @@ export default async function PartnersPage() {
           </div>
           <div>
             <p className="text-xs text-muted">{t(lang, "partners.partnerCount")}</p>
-            <p className="font-semibold text-foreground">{partners.length}</p>
+            <p className="font-semibold text-foreground">{activePartners.length}</p>
           </div>
         </div>
       </div>
@@ -114,11 +118,17 @@ export default async function PartnersPage() {
                 <th className="px-4 py-2 font-medium text-right">
                   {t(lang, "partners.profitSharePercent")}
                 </th>
+                <th className="px-4 py-2 font-medium">{t(lang, "partners.status")}</th>
               </tr>
             </thead>
             <tbody>
               {partners.map((p) => (
-                <tr key={p.id} className="border-b border-border last:border-0">
+                <tr
+                  key={p.id}
+                  className={`border-b border-border last:border-0 ${
+                    p.status === "inactive" ? "opacity-60" : ""
+                  }`}
+                >
                   <td className="px-4 py-2">
                     <Link
                       href={`/partners/${p.id}`}
@@ -135,6 +145,17 @@ export default async function PartnersPage() {
                     {p.ownershipPercent.toFixed(1)}%
                   </td>
                   <td className="px-4 py-2 text-right">{p.profitSharePercent}%</td>
+                  <td className="px-4 py-2">
+                    <span
+                      className={`rounded-full px-2 py-0.5 text-xs font-medium ${
+                        p.status === "active"
+                          ? "bg-primary/10 text-primary"
+                          : "bg-muted/20 text-muted"
+                      }`}
+                    >
+                      {t(lang, `partners.status.${p.status}` as DictKey)}
+                    </span>
+                  </td>
                 </tr>
               ))}
             </tbody>

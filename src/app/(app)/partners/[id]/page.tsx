@@ -4,6 +4,8 @@ import { getPartner, listPartnerEntries } from "@/lib/repo";
 import {
   deleteInvestmentEntryAction,
   updatePartnerProfitShareAction,
+  deactivatePartnerAction,
+  reactivatePartnerAction,
 } from "@/lib/actions/partners";
 import { t, type DictKey } from "@/lib/i18n";
 import ConfirmForm from "@/components/forms/ConfirmForm";
@@ -26,11 +28,43 @@ export default async function PartnerDetailPage({
 
   return (
     <div className="space-y-6">
-      <div>
-        <h1 className="text-2xl font-bold text-foreground">{partner.name}</h1>
-        <p className="text-sm text-muted">
-          {partner.email || partner.phone || "—"}
-        </p>
+      <div className="flex flex-wrap items-start justify-between gap-4">
+        <div>
+          <div className="flex items-center gap-2">
+            <h1 className="text-2xl font-bold text-foreground">{partner.name}</h1>
+            <span
+              className={`rounded-full px-2 py-0.5 text-xs font-medium ${
+                partner.status === "active"
+                  ? "bg-primary/10 text-primary"
+                  : "bg-muted/20 text-muted"
+              }`}
+            >
+              {t(lang, `partners.status.${partner.status}` as DictKey)}
+            </span>
+          </div>
+          <p className="text-sm text-muted">
+            {partner.email || partner.phone || "—"}
+          </p>
+        </div>
+        {isOwner &&
+          (partner.status === "active" ? (
+            <ConfirmForm
+              action={deactivatePartnerAction}
+              hiddenFields={{ partner_id: partner.id }}
+              confirmMessage={t(lang, "partners.confirmDeactivate")}
+            >
+              <button type="submit" className="btn-secondary text-sm text-danger">
+                {t(lang, "partners.deactivate")}
+              </button>
+            </ConfirmForm>
+          ) : (
+            <form action={reactivatePartnerAction}>
+              <input type="hidden" name="partner_id" value={partner.id} />
+              <button type="submit" className="btn-secondary text-sm">
+                {t(lang, "partners.reactivate")}
+              </button>
+            </form>
+          ))}
       </div>
 
       <div className="grid grid-cols-2 gap-4 sm:grid-cols-3">

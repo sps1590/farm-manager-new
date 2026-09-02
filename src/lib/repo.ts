@@ -6,6 +6,7 @@ import {
   type FarmRow,
   type MedicalRecordRow,
   type PartnerInvestmentRow,
+  type PartnerStatus,
   type PartnerSummary,
   type PurchaseRow,
   type SaleRow,
@@ -300,31 +301,37 @@ interface RawPartnerRow {
   email: string | null;
   phone: string | null;
   profit_share_percent: number;
+  partner_status: PartnerStatus;
   net_investment: number;
 }
 
 // Ownership % is computed here, live, from every partner's net investment --
-// never stored. Fetches all partners in the farm even when only one is
-// needed (getPartner) because each partner's % depends on everyone else's
+// never stored. Fetches all partners in the farm (active and inactive, so
+// the owner can still see deactivated partners' records) even when only one
+// is needed (getPartner) because each partner's % depends on everyone else's
 // total; fine at the 14-15 partner scale this is built for.
+//
+// Deactivated partners are excluded from the ownership % pool entirely --
+// the denominator only sums active partners' net investment, so remaining
+// active partners' % increases when someone deactivates. Their historical
+// ledger stays intact and visible; they just show 0% while inactive.
 async function fetchPartnerSummaries(
   db: Awaited<ReturnType<typeof getDb>>,
   farmId: number
 ): Promise<PartnerSummary[]> {
   const rows = (await db`
-    SELECT u.id, u.name, u.email, u.phone, u.profit_share_percent,
+    SELECT u.id, u.name, u.email, u.phone, u.profit_share_percent, u.partner_status,
       COALESCE(SUM(CASE WHEN pi.entry_type = 'contribution' THEN pi.amount ELSE -pi.amount END), 0) as net_investment
     FROM users u
     LEFT JOIN partner_investments pi ON pi.user_id = u.id
     WHERE u.farm_id = ${farmId} AND u.is_partner = true
-    GROUP BY u.id, u.name, u.email, u.phone, u.profit_share_percent
-    ORDER BY u.name
+    GROUP BY u.id, u.name, u.email, u.phone, u.profit_share_percent, u.partner_status
+    ORDER BY (u.partner_status = 'active') DESC, u.name
   `) as unknown as RawPartnerRow[];
 
-  const total = rows.reduce(
-    (sum, r) => sum + Math.max(0, Number(r.net_investment)),
-    0
-  );
+  const total = rows
+    .filter((r) => r.partner_status === "active")
+    .reduce((sum, r) => sum + Math.max(0, Number(r.net_investment)), 0);
 
   return rows.map((r) => ({
     id: r.id,
@@ -333,8 +340,11 @@ async function fetchPartnerSummaries(
     phone: r.phone,
     netInvestment: Number(r.net_investment),
     profitSharePercent: Number(r.profit_share_percent),
+    status: r.partner_status,
     ownershipPercent:
-      total > 0 ? (Math.max(0, Number(r.net_investment)) / total) * 100 : 0,
+      r.partner_status === "active" && total > 0
+        ? (Math.max(0, Number(r.net_investment)) / total) * 100
+        : 0,
   }));
 }
 

@@ -169,6 +169,16 @@ can register and use the same deployment, each with their own team and data.
 - Visible in both the sidebar nav (🤝, shown to the owner and to any
   partner) and a dashboard card (total invested + partner count for the
   owner; your own investment/ownership %/profit share % for a partner).
+- **Deactivation** (`users.partner_status`, done 2026-09-02): owner can
+  deactivate/reactivate a partner from `/partners/[id]`. Deactivating blocks
+  login immediately (existing sessions are deleted, not just left to expire)
+  and drops them out of the ownership %/profit-share pool entirely — the
+  denominator in `fetchPartnerSummaries` only sums *active* partners' net
+  investment, so remaining active partners' % increases proportionally.
+  Their historical ledger and profile stay intact and visible (owner can
+  still add corrective/settlement entries) so reactivating restores them
+  cleanly. `/partners` and the dashboard "total invested" figure are
+  active-only too, for consistency with the ownership % math.
 
 ## What's NOT built yet — future phases
 
@@ -236,6 +246,10 @@ Database: Neon Postgres, provisioned through Vercel's Storage integration.
 
 ## Changelog
 
+- **2026-09-02** — Added partner deactivation: blocks login (and kills
+  existing sessions immediately), excludes the partner from the live
+  ownership %/profit-share pool, keeps their ledger for records, reversible.
+  `/partners` and dashboard totals now reflect active partners only.
 - **2026-09-02** — Added partnership management: `/partners` (owner) and
   `/partners/[id]` (owner + the partner themself), a `partner_investments`
   ledger table (contributions/withdrawals, backdatable), live-computed
