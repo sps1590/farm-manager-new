@@ -73,9 +73,11 @@ can register and use the same deployment, each with their own team and data.
   table, an httpOnly cookie. An identifier that matches no user redirects to
   `/register` instead of showing a generic error (2026-09-01).
 - **RBAC**: `src/lib/permissions.ts` — `hasPermission()` (sync, owner always
-  true), `requirePermission()` / `requireOwner()` (async, throw on failure,
-  same style as `requireUser()`). Permissions are loaded once per request
-  into `SessionUser.permissions` by `getSessionUser()`.
+  true), `requirePermission()` / `requireOwner()` / `requireOwnerOrSelf()`
+  (async, redirect to `/dashboard` on failure rather than throw — a thrown
+  error surfaced Next's generic crash screen for what's really just "you
+  can't see this", fixed 2026-09-01). Permissions are loaded once per
+  request into `SessionUser.permissions` by `getSessionUser()`.
 - **i18n**: no library. `src/lib/i18n.ts` is a flat key → {en, bn} string
   dictionary and a `t(lang, key)` helper. Add a string: add a key to both
   language blocks (TypeScript enforces both objects have the same key set).
@@ -137,6 +139,36 @@ can register and use the same deployment, each with their own team and data.
 - The original `owner`/`farm1234` test login still works, transparently
   migrated into an auto-created "Default Farm" the first time the updated
   schema runs against the already-deployed database.
+
+**Partnership management** (done, verified 2026-09-02)
+- The farm has ~14-15 financial partners previously tracked in a paper
+  register book. `/partners` (owner-only list + owner-editable "company
+  reserve %") and `/partners/[id]` (ledger + controls) digitize this.
+- A partner is a `users` row with `is_partner = true` (`role = 'partner'`)
+  — reuses the existing login/session/farm-scoping machinery entirely, so a
+  partner can log in and see (read-only) their own investment history,
+  ownership %, and profit share % via `requireOwnerOrSelf()`. Not part of
+  the Team permission matrix (financial data, hard-coded owner-only + self,
+  same reasoning as Team management itself).
+- `partner_investments` is an append-only ledger (`contribution` |
+  `withdrawal`, dated `entry_date` so old register-book entries can be
+  backfilled with their real historical date, owner can delete a row to fix
+  a mis-entry). **Ownership % is never stored** — `listPartners`/`getPartner`
+  in `src/lib/repo.ts` compute it live every time from each partner's net
+  investment (contributions minus withdrawals, floored at 0) ÷ the farm's
+  total, so it's always correct after any new entry.
+- **Profit split** is a separate, owner-set number per partner
+  (`users.profit_share_percent`), independent of ownership % on purpose (a
+  partner who also manages day-to-day work can get a larger profit share
+  than their capital alone implies). `farms.profit_reserve_percent` is the
+  owner-declared % kept by the company before the rest is distributed; the
+  `/partners` page shows the distributable pool and a running total of
+  allocated partner shares as an informational (non-blocking) sanity check.
+  No real profit-distribution engine yet — this is bookkeeping/reference
+  only until the Phase 2 expenses/P&L report exists.
+- Visible in both the sidebar nav (🤝, shown to the owner and to any
+  partner) and a dashboard card (total invested + partner count for the
+  owner; your own investment/ownership %/profit share % for a partner).
 
 ## What's NOT built yet — future phases
 
@@ -204,6 +236,13 @@ Database: Neon Postgres, provisioned through Vercel's Storage integration.
 
 ## Changelog
 
+- **2026-09-02** — Added partnership management: `/partners` (owner) and
+  `/partners/[id]` (owner + the partner themself), a `partner_investments`
+  ledger table (contributions/withdrawals, backdatable), live-computed
+  ownership %, an owner-set per-partner profit share % plus a farm-level
+  profit reserve %, a `requireOwnerOrSelf()` access helper, and nav/dashboard
+  visibility. Also fixed a stale doc note (RBAC helpers redirect, not throw,
+  as of 2026-09-01 — the code was already correct, this file wasn't).
 - **2026-09-01** — Deployed to Vercel; migrated database from local
   `node:sqlite` to Postgres (Neon). Added multi-tenant farm/company
   registration, identifier-based login with redirect-to-register on unknown

@@ -28,6 +28,7 @@ export interface FarmRow {
   name: string;
   contact_email: string | null;
   contact_phone: string | null;
+  profit_reserve_percent: number;
   created_at: string;
 }
 
@@ -40,6 +41,8 @@ export interface UserRow {
   password_hash: string;
   name: string;
   role: Role;
+  is_partner: boolean;
+  profit_share_percent: number;
   language: Language;
   created_at: string;
 }
@@ -52,6 +55,8 @@ export interface SessionUser {
   phone: string | null;
   name: string;
   role: Role;
+  is_partner: boolean;
+  profit_share_percent: number;
   language: Language;
   permissions: PermissionsMap;
 }
@@ -157,6 +162,29 @@ export interface TeamMemberRow {
   username: string | null;
   role: Role;
   permissions: PermissionsMap;
+}
+
+export type PartnerEntryType = "contribution" | "withdrawal";
+
+export interface PartnerInvestmentRow {
+  id: number;
+  user_id: number;
+  entry_type: PartnerEntryType;
+  amount: number;
+  entry_date: string;
+  notes: string | null;
+  created_by: number | null;
+  created_at: string;
+}
+
+export interface PartnerSummary {
+  id: number;
+  name: string;
+  email: string | null;
+  phone: string | null;
+  netInvestment: number;
+  ownershipPercent: number;
+  profitSharePercent: number;
 }
 
 export interface EmployeeRow {

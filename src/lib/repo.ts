@@ -3,7 +3,10 @@ import { getDb } from "./db";
 import {
   emptyPermissions,
   type BatchRow,
+  type FarmRow,
   type MedicalRecordRow,
+  type PartnerInvestmentRow,
+  type PartnerSummary,
   type PurchaseRow,
   type SaleRow,
   type SpeciesRow,
@@ -283,4 +286,82 @@ export async function getTeamMember(
   const row = rows[0] as Omit<TeamMemberRow, "permissions"> | undefined;
   if (!row) return undefined;
   return { ...row, permissions: await loadPermissionsFor(db, row.id) };
+}
+
+export async function getFarm(farmId: number): Promise<FarmRow | undefined> {
+  const db = await getDb();
+  const rows = await db`SELECT * FROM farms WHERE id = ${farmId}`;
+  return plainRow<FarmRow>(rows[0]);
+}
+
+interface RawPartnerRow {
+  id: number;
+  name: string;
+  email: string | null;
+  phone: string | null;
+  profit_share_percent: number;
+  net_investment: number;
+}
+
+// Ownership % is computed here, live, from every partner's net investment --
+// never stored. Fetches all partners in the farm even when only one is
+// needed (getPartner) because each partner's % depends on everyone else's
+// total; fine at the 14-15 partner scale this is built for.
+async function fetchPartnerSummaries(
+  db: Awaited<ReturnType<typeof getDb>>,
+  farmId: number
+): Promise<PartnerSummary[]> {
+  const rows = (await db`
+    SELECT u.id, u.name, u.email, u.phone, u.profit_share_percent,
+      COALESCE(SUM(CASE WHEN pi.entry_type = 'contribution' THEN pi.amount ELSE -pi.amount END), 0) as net_investment
+    FROM users u
+    LEFT JOIN partner_investments pi ON pi.user_id = u.id
+    WHERE u.farm_id = ${farmId} AND u.is_partner = true
+    GROUP BY u.id, u.name, u.email, u.phone, u.profit_share_percent
+    ORDER BY u.name
+  `) as unknown as RawPartnerRow[];
+
+  const total = rows.reduce(
+    (sum, r) => sum + Math.max(0, Number(r.net_investment)),
+    0
+  );
+
+  return rows.map((r) => ({
+    id: r.id,
+    name: r.name,
+    email: r.email,
+    phone: r.phone,
+    netInvestment: Number(r.net_investment),
+    profitSharePercent: Number(r.profit_share_percent),
+    ownershipPercent:
+      total > 0 ? (Math.max(0, Number(r.net_investment)) / total) * 100 : 0,
+  }));
+}
+
+export async function listPartners(farmId: number): Promise<PartnerSummary[]> {
+  const db = await getDb();
+  return fetchPartnerSummaries(db, farmId);
+}
+
+export async function getPartner(
+  id: number,
+  farmId: number
+): Promise<PartnerSummary | undefined> {
+  const db = await getDb();
+  const all = await fetchPartnerSummaries(db, farmId);
+  return all.find((p) => p.id === id);
+}
+
+export async function listPartnerEntries(
+  partnerId: number,
+  farmId: number
+): Promise<PartnerInvestmentRow[]> {
+  const db = await getDb();
+  return plainRows<PartnerInvestmentRow>(
+    await db`
+      SELECT * FROM partner_investments
+      WHERE user_id = ${partnerId} AND farm_id = ${farmId}
+      ORDER BY entry_date DESC, id DESC
+    `
+  );
 }

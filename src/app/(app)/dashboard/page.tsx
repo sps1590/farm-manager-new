@@ -1,6 +1,13 @@
 import Link from "next/link";
 import { requireUser } from "@/lib/auth";
-import { dashboardSummary, listUpcomingMedical, recentActivity, listSpecies } from "@/lib/repo";
+import {
+  dashboardSummary,
+  listUpcomingMedical,
+  recentActivity,
+  listSpecies,
+  listPartners,
+  getPartner,
+} from "@/lib/repo";
 import { t } from "@/lib/i18n";
 function fmtAmount(n: number) {
   return new Intl.NumberFormat("en-US", { maximumFractionDigits: 0 }).format(n);
@@ -15,6 +22,9 @@ export default async function DashboardPage() {
   const speciesList = await listSpecies();
   const speciesById = Object.fromEntries(speciesList.map((s) => [s.id, s]));
 
+  const ownerPartners = user.role === "owner" ? await listPartners(user.farm_id) : null;
+  const ownPartnership = user.is_partner ? await getPartner(user.id, user.farm_id) : null;
+
   return (
     <div className="space-y-8">
       <div>
@@ -23,6 +33,61 @@ export default async function DashboardPage() {
         </h1>
         <p className="text-sm text-muted">{t(lang, "dashboard.subtitle")}</p>
       </div>
+
+      {ownerPartners && (
+        <div className="card flex flex-wrap items-center justify-between gap-4 border-l-4 border-l-primary p-4">
+          <div>
+            <h2 className="font-semibold text-foreground">
+              🤝 {t(lang, "partners.title")}
+            </h2>
+            <p className="text-sm text-muted">
+              {t(lang, "partners.totalInvested")}:{" "}
+              <span className="font-medium text-foreground">
+                {t(lang, "common.currency")}
+                {fmtAmount(
+                  ownerPartners.reduce((sum, p) => sum + Math.max(0, p.netInvestment), 0)
+                )}
+              </span>
+              {" · "}
+              {t(lang, "partners.partnerCount")}:{" "}
+              <span className="font-medium text-foreground">{ownerPartners.length}</span>
+            </p>
+          </div>
+          <Link href="/partners" className="btn-secondary text-sm">
+            {t(lang, "partners.viewAll")} →
+          </Link>
+        </div>
+      )}
+
+      {ownPartnership && (
+        <div className="card flex flex-wrap items-center justify-between gap-4 border-l-4 border-l-primary p-4">
+          <div>
+            <h2 className="font-semibold text-foreground">
+              🤝 {t(lang, "partners.yourPartnership")}
+            </h2>
+            <p className="text-sm text-muted">
+              {t(lang, "partners.netInvestment")}:{" "}
+              <span className="font-medium text-foreground">
+                {t(lang, "common.currency")}
+                {fmtAmount(ownPartnership.netInvestment)}
+              </span>
+              {" · "}
+              {t(lang, "partners.ownershipPercent")}:{" "}
+              <span className="font-medium text-foreground">
+                {ownPartnership.ownershipPercent.toFixed(1)}%
+              </span>
+              {" · "}
+              {t(lang, "partners.profitSharePercent")}:{" "}
+              <span className="font-medium text-foreground">
+                {ownPartnership.profitSharePercent}%
+              </span>
+            </p>
+          </div>
+          <Link href={`/partners/${user.id}`} className="btn-secondary text-sm">
+            {t(lang, "partners.viewAll")} →
+          </Link>
+        </div>
+      )}
 
       {summary.length === 0 ? (
         <p className="text-muted">{t(lang, "dashboard.noSpecies")}</p>

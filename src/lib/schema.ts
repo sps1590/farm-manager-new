@@ -17,8 +17,10 @@ export const SCHEMA_STATEMENTS: string[] = [
     name TEXT NOT NULL,
     contact_email TEXT,
     contact_phone TEXT,
+    profit_reserve_percent DOUBLE PRECISION NOT NULL DEFAULT 0,
     created_at TEXT NOT NULL DEFAULT ${NOW_TEXT}
   )`,
+  `ALTER TABLE farms ADD COLUMN IF NOT EXISTS profit_reserve_percent DOUBLE PRECISION NOT NULL DEFAULT 0`,
 
   // farm_id is nullable at the DB level (not NOT NULL) so this ADD COLUMN is
   // safe against the rows that existed before multi-tenancy; application code
@@ -32,6 +34,8 @@ export const SCHEMA_STATEMENTS: string[] = [
     password_hash TEXT NOT NULL,
     name TEXT NOT NULL,
     role TEXT NOT NULL,
+    is_partner BOOLEAN NOT NULL DEFAULT false,
+    profit_share_percent DOUBLE PRECISION NOT NULL DEFAULT 0,
     language TEXT NOT NULL DEFAULT 'bn' CHECK(language IN ('en','bn')),
     created_at TEXT NOT NULL DEFAULT ${NOW_TEXT}
   )`,
@@ -40,6 +44,9 @@ export const SCHEMA_STATEMENTS: string[] = [
   `ALTER TABLE users ADD COLUMN IF NOT EXISTS email TEXT UNIQUE`,
   `ALTER TABLE users ADD COLUMN IF NOT EXISTS phone TEXT UNIQUE`,
   `ALTER TABLE users ALTER COLUMN username DROP NOT NULL`,
+  // Partnership management: a partner is a users row with is_partner = true.
+  `ALTER TABLE users ADD COLUMN IF NOT EXISTS is_partner BOOLEAN NOT NULL DEFAULT false`,
+  `ALTER TABLE users ADD COLUMN IF NOT EXISTS profit_share_percent DOUBLE PRECISION NOT NULL DEFAULT 0`,
   // role used to be CHECK(role IN ('owner','employee')); roles are free text now
   // (fixed presets + custom labels chosen in the UI), enforcement happens in code.
   `ALTER TABLE users DROP CONSTRAINT IF EXISTS users_role_check`,
@@ -71,6 +78,23 @@ export const SCHEMA_STATEMENTS: string[] = [
     UNIQUE(user_id, module)
   )`,
   `CREATE INDEX IF NOT EXISTS idx_user_permissions_user ON user_permissions(user_id)`,
+
+  // Investment/withdrawal ledger for financial partners (users.is_partner =
+  // true). Ownership % is never stored -- always computed live from this
+  // table (see src/lib/repo.ts -> listPartners) so it's always correct.
+  `CREATE TABLE IF NOT EXISTS partner_investments (
+    id SERIAL PRIMARY KEY,
+    farm_id INTEGER REFERENCES farms(id) ON DELETE CASCADE,
+    user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    entry_type TEXT NOT NULL CHECK(entry_type IN ('contribution','withdrawal')),
+    amount DOUBLE PRECISION NOT NULL,
+    entry_date TEXT NOT NULL,
+    notes TEXT,
+    created_by INTEGER REFERENCES users(id),
+    created_at TEXT NOT NULL DEFAULT ${NOW_TEXT}
+  )`,
+  `CREATE INDEX IF NOT EXISTS idx_partner_investments_farm ON partner_investments(farm_id)`,
+  `CREATE INDEX IF NOT EXISTS idx_partner_investments_user ON partner_investments(user_id)`,
 
   `CREATE TABLE IF NOT EXISTS species (
     id SERIAL PRIMARY KEY,

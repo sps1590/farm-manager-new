@@ -93,7 +93,8 @@ export async function getSessionUser(): Promise<SessionUser | null> {
 
   const db = await getDb();
   const rows = await db`
-    SELECT u.id, u.farm_id, u.username, u.email, u.phone, u.name, u.role, u.language, s.expires_at
+    SELECT u.id, u.farm_id, u.username, u.email, u.phone, u.name, u.role,
+           u.is_partner, u.profit_share_percent, u.language, s.expires_at
     FROM sessions s JOIN users u ON u.id = s.user_id
     WHERE s.id = ${sid}
   `;
@@ -106,6 +107,8 @@ export async function getSessionUser(): Promise<SessionUser | null> {
         phone: string | null;
         name: string;
         role: string;
+        is_partner: boolean;
+        profit_share_percent: number;
         language: "en" | "bn";
         expires_at: string;
       }
@@ -127,6 +130,8 @@ export async function getSessionUser(): Promise<SessionUser | null> {
     phone: row.phone,
     name: row.name,
     role: row.role,
+    is_partner: row.is_partner,
+    profit_share_percent: row.profit_share_percent,
     language: row.language,
     permissions,
   };
