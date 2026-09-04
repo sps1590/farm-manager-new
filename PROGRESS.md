@@ -157,15 +157,16 @@ can register and use the same deployment, each with their own team and data.
   in `src/lib/repo.ts` compute it live every time from each partner's net
   investment (contributions minus withdrawals, floored at 0) ÷ the farm's
   total, so it's always correct after any new entry.
-- **Profit split** is a separate, owner-set number per partner
-  (`users.profit_share_percent`), independent of ownership % on purpose (a
-  partner who also manages day-to-day work can get a larger profit share
-  than their capital alone implies). `farms.profit_reserve_percent` is the
-  owner-declared % kept by the company before the rest is distributed; the
-  `/partners` page shows the distributable pool and a running total of
-  allocated partner shares as an informational (non-blocking) sanity check.
-  No real profit-distribution engine yet — this is bookkeeping/reference
-  only until the Phase 2 expenses/P&L report exists.
+- **Profit split**: `users.profit_share_percent` **auto-tracks ownership %
+  live by default** (`users.profit_share_auto`, done 2026-09-02) — no
+  manual step needed for the common case. The owner can still override a
+  specific partner's share (e.g. a working partner getting extra beyond
+  their capital), which flips that partner to a fixed custom value until
+  `resetPartnerProfitShareAction` switches them back to auto. `farms.
+  profit_reserve_percent` is the owner-declared % kept by the company
+  before the rest is distributed. Every partner now shows both the **%**
+  and a computed **Amount** (derived, not separately editable) — Amount =
+  all-time Net Profit (see P&L below) × distributable % × share %.
 - Visible in both the sidebar nav (🤝, shown to the owner and to any
   partner) and a dashboard card (total invested + partner count for the
   owner; your own investment/ownership %/profit share % for a partner).
@@ -179,15 +180,52 @@ can register and use the same deployment, each with their own team and data.
   still add corrective/settlement entries) so reactivating restores them
   cleanly. `/partners` and the dashboard "total invested" figure are
   active-only too, for consistency with the ownership % math.
+- **Owner is a partner by default** (done 2026-09-02): registration sets
+  `is_partner = true` on the owner row, and an idempotent backfill in
+  `ensureSchema()` retroactively flips every pre-existing owner too — the
+  owner can invest/withdraw in `/partners` like any other partner.
+
+**Farm Profile & business types** (done, verified 2026-09-02)
+- `/farm` (owner-only): edit farm name/contact details; select which
+  species/"business types" this farm actually operates (checkboxes over the
+  global `species` list, stored in a new `farm_species` join table — no
+  rows yet for a farm = "not configured" = every species shows, so nothing
+  broke for farms that existed before this page did); quick-link cards to
+  Team/Partners/Employees/Reports.
+- The selection actually filters species app-wide: `listEnabledSpecies()`
+  in `src/lib/repo.ts` is used for the "new record" dropdowns (Batches/
+  Purchases/Sales/Medical `/new` pages) and the dashboard's per-species
+  cards. List/detail pages keep the unfiltered `listSpecies()` for their
+  id-lookup maps, so a record referencing a since-disabled species still
+  displays correctly instead of going blank.
+
+**HR (employees & payroll)** (done, verified 2026-09-02) — this was the
+"Phase 2" employee management item, now built
+- `/employees` (owner-only): list, add, edit staff (`employees` table —
+  name, phone, role/title, join date, monthly salary, housing provided,
+  active/inactive status). `/employees/[id]`: salary payment ledger
+  (`salary_payments` table) — add a payment (pay period, amount, pending/
+  paid, paid date), one-click "mark paid", delete a mis-entry. Deleting an
+  employee is a real hard delete (cascades their payment history — fine for
+  a mistakenly-added record; someone who leaves should be set inactive via
+  edit instead).
+
+**Automated P&L report** (done, verified 2026-09-02) — this was the
+"Phase 2/3" expenses/P&L report item, now built
+- `/reports` (owner-only): date-range filter (default all-time), summary
+  cards for Income (sales), Expenses (purchases), Payroll (paid salary
+  payments), and Net Profit (colored red/green by sign), plus an expense
+  breakdown by purchase category (surfaces utility/feed/medicine spend
+  without a separate utility-bill entity). No new data-entry forms — this
+  is a pure aggregation over the existing Purchases/Sales/Salary Payments
+  tables via `getFinancialSummary()`/`getExpenseBreakdown()` in
+  `src/lib/repo.ts`. The all-time (no range) call from this same function
+  is what feeds the Partnership profit-share Amount above.
 
 ## What's NOT built yet — future phases
 
-**Phase 2 — people and money**
-- Employee management UI (list/create/edit) over the existing `employees`
-  table (HR/payroll — distinct from the `users` login/RBAC table added
-  2026-09-01; intentionally not linked to it).
-- Salary payment tracking UI over `salary_payments`.
-- A dedicated expenses/P&L report page.
+**Phase 2 — people and money** (done as of 2026-09-02 — see HR and
+Automated P&L report above)
 
 **Phase 3 — AI-assisted analytics**
 - Start with straightforward statistics from existing purchases/sales data
@@ -246,6 +284,17 @@ Database: Neon Postgres, provisioned through Vercel's Storage integration.
 
 ## Changelog
 
+- **2026-09-02** — Owner is now a partner by default (registration +
+  idempotent backfill for existing owners). Profit share % auto-syncs to
+  ownership % live (with manual override + reset-to-auto still available);
+  Partnership pages now show both % and a computed ৳ Amount, driven by a new
+  automated P&L (`getFinancialSummary()`/`getExpenseBreakdown()`). Added the
+  Farm Profile hub (`/farm`) with farm details + a business-type selector
+  that actually filters the species dropdowns app-wide (`farm_species`
+  table, `listEnabledSpecies()`). Built the HR module (`/employees`) over
+  the existing `employees`/`salary_payments` tables. Built `/reports`
+  (income/expenses/payroll/net profit, date-range filterable, expense
+  category breakdown). Closes out the "Phase 2 — people and money" item.
 - **2026-09-02** — Added partner deactivation: blocks login (and kills
   existing sessions immediately), excludes the partner from the live
   ownership %/profit-share pool, keeps their ledger for records, reversible.

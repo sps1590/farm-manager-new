@@ -1,12 +1,12 @@
 import { requirePermission } from "@/lib/permissions";
-import { listSpecies, listBatchesForSelect } from "@/lib/repo";
+import { listEnabledSpecies, listBatchesForSelect } from "@/lib/repo";
 import { t } from "@/lib/i18n";
 import NewMedicalForm from "@/components/forms/NewMedicalForm";
 
 export default async function NewMedicalPage() {
   const user = await requirePermission("medical", "create");
   const lang = user.language;
-  const species = await listSpecies();
+  const species = await listEnabledSpecies(user.farm_id);
   const batches = await listBatchesForSelect(user.farm_id);
 
   return (

@@ -19,6 +19,20 @@ const NAV_ITEMS: Array<{
   { href: "/medical", key: "nav.medical", icon: "💉", module: "medical" },
 ];
 
+// Owner-only, not part of the configurable permission matrix -- financial
+// and personal-compensation data, same reasoning as Team/Partners.
+const OWNER_NAV_ITEMS: Array<{
+  href: string;
+  key: "nav.team" | "nav.partners" | "nav.employees" | "nav.reports" | "nav.farmProfile";
+  icon: string;
+}> = [
+  { href: "/team", key: "nav.team", icon: "👥" },
+  { href: "/partners", key: "nav.partners", icon: "🤝" },
+  { href: "/employees", key: "nav.employees", icon: "🧑‍🌾" },
+  { href: "/reports", key: "nav.reports", icon: "📈" },
+  { href: "/farm", key: "nav.farmProfile", icon: "🏡" },
+];
+
 export default async function AppLayout({
   children,
 }: {
@@ -49,16 +63,18 @@ export default async function AppLayout({
               <span>{t(lang, item.key)}</span>
             </Link>
           ))}
-          {user.role === "owner" && (
-            <Link
-              href="/team"
-              className="flex shrink-0 items-center gap-2 rounded-lg px-3 py-2 text-sm font-medium text-foreground hover:bg-background"
-            >
-              <span>👥</span>
-              <span>{t(lang, "nav.team")}</span>
-            </Link>
-          )}
-          {(user.role === "owner" || user.is_partner) && (
+          {user.role === "owner" &&
+            OWNER_NAV_ITEMS.map((item) => (
+              <Link
+                key={item.href}
+                href={item.href}
+                className="flex shrink-0 items-center gap-2 rounded-lg px-3 py-2 text-sm font-medium text-foreground hover:bg-background"
+              >
+                <span>{item.icon}</span>
+                <span>{t(lang, item.key)}</span>
+              </Link>
+            ))}
+          {user.role !== "owner" && user.is_partner && (
             <Link
               href="/partners"
               className="flex shrink-0 items-center gap-2 rounded-lg px-3 py-2 text-sm font-medium text-foreground hover:bg-background"

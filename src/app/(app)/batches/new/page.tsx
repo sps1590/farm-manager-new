@@ -1,12 +1,12 @@
 import { requirePermission } from "@/lib/permissions";
-import { listSpecies } from "@/lib/repo";
+import { listEnabledSpecies } from "@/lib/repo";
 import { t } from "@/lib/i18n";
 import NewBatchForm from "@/components/forms/NewBatchForm";
 
 export default async function NewBatchPage() {
   const user = await requirePermission("batches", "create");
   const lang = user.language;
-  const species = await listSpecies();
+  const species = await listEnabledSpecies(user.farm_id);
 
   return (
     <div className="max-w-2xl space-y-6">
