@@ -4,6 +4,7 @@ import { listSales, listSpecies } from "@/lib/repo";
 import { deleteSaleAction } from "@/lib/actions/sales";
 import { t } from "@/lib/i18n";
 import ConfirmForm from "@/components/forms/ConfirmForm";
+import { formatCurrency } from "@/lib/format";
 
 export default async function SalesPage() {
   const user = await requirePermission("sales", "view");
@@ -59,7 +60,7 @@ export default async function SalesPage() {
                     </td>
                     <td className="px-4 py-2 text-muted">{s.buyer || "—"}</td>
                     <td className="px-4 py-2 text-right font-medium text-primary">
-                      {t(lang, "common.currency")}{s.total_amount}
+                      {t(lang, "common.currency")}{formatCurrency(s.total_amount)}
                     </td>
                     <td className="px-4 py-2 text-right">
                       {canDelete && (
@@ -84,7 +85,7 @@ export default async function SalesPage() {
                   {t(lang, "common.totalAmount")}
                 </td>
                 <td className="px-4 py-2 text-right font-bold text-primary">
-                  {t(lang, "common.currency")}{total}
+                  {t(lang, "common.currency")}{formatCurrency(total)}
                 </td>
                 <td />
               </tr>

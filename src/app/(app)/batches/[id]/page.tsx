@@ -11,6 +11,7 @@ import {
 import { updateBatchStatusAction, deleteBatchAction } from "@/lib/actions/batches";
 import { t } from "@/lib/i18n";
 import ConfirmForm from "@/components/forms/ConfirmForm";
+import { formatCurrency } from "@/lib/format";
 
 export default async function BatchDetailPage({
   params,
@@ -113,7 +114,7 @@ export default async function BatchDetailPage({
                 <li key={p.id} className="flex justify-between">
                   <span>{p.item_name}</span>
                   <span className="text-muted">
-                    {t(lang, "common.currency")}{p.total_amount}
+                    {t(lang, "common.currency")}{formatCurrency(p.total_amount)}
                   </span>
                 </li>
               ))}
@@ -130,7 +131,7 @@ export default async function BatchDetailPage({
                 <li key={s.id} className="flex justify-between">
                   <span>{s.item_name}</span>
                   <span className="text-primary font-medium">
-                    {t(lang, "common.currency")}{s.total_amount}
+                    {t(lang, "common.currency")}{formatCurrency(s.total_amount)}
                   </span>
                 </li>
               ))}

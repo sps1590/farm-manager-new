@@ -2,6 +2,7 @@ import Link from "next/link";
 import { requireOwner } from "@/lib/permissions";
 import { listEmployees } from "@/lib/repo";
 import { t } from "@/lib/i18n";
+import { formatCurrency } from "@/lib/format";
 
 export default async function EmployeesPage() {
   const owner = await requireOwner();
@@ -56,7 +57,7 @@ export default async function EmployeesPage() {
                   <td className="px-4 py-2 text-muted">{e.role_title || "—"}</td>
                   <td className="px-4 py-2 text-right">
                     {e.monthly_salary != null
-                      ? `${t(lang, "common.currency")}${e.monthly_salary}`
+                      ? `${t(lang, "common.currency")}${formatCurrency(e.monthly_salary)}`
                       : "—"}
                   </td>
                   <td className="px-4 py-2">

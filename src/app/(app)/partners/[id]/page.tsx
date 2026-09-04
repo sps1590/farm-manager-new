@@ -11,10 +11,7 @@ import {
 import { t, type DictKey } from "@/lib/i18n";
 import ConfirmForm from "@/components/forms/ConfirmForm";
 import PartnerInvestmentForm from "@/components/forms/PartnerInvestmentForm";
-
-function fmtAmount(n: number) {
-  return new Intl.NumberFormat("en-US", { maximumFractionDigits: 0 }).format(n);
-}
+import { formatCurrency } from "@/lib/format";
 
 export default async function PartnerDetailPage({
   params,
@@ -77,7 +74,7 @@ export default async function PartnerDetailPage({
           <p className="text-xs text-muted">{t(lang, "partners.netInvestment")}</p>
           <p className="text-lg font-semibold text-foreground">
             {t(lang, "common.currency")}
-            {partner.netInvestment}
+            {formatCurrency(partner.netInvestment)}
           </p>
         </div>
         <div className="card p-3">
@@ -99,7 +96,7 @@ export default async function PartnerDetailPage({
             }`}
           >
             {t(lang, "common.currency")}
-            {fmtAmount(partner.profitShareAmount)}
+            {formatCurrency(partner.profitShareAmount)}
           </p>
         </div>
       </div>
@@ -203,7 +200,7 @@ export default async function PartnerDetailPage({
                     <td className="px-4 py-2 text-right font-medium">
                       {e.entry_type === "withdrawal" ? "-" : "+"}
                       {t(lang, "common.currency")}
-                      {e.amount}
+                      {formatCurrency(e.amount)}
                     </td>
                     <td className="px-4 py-2 text-muted">{e.notes || "—"}</td>
                     {isOwner && (

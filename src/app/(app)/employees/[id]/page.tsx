@@ -8,6 +8,7 @@ import {
   deleteSalaryPaymentAction,
 } from "@/lib/actions/employees";
 import { t, type DictKey } from "@/lib/i18n";
+import { formatCurrency } from "@/lib/format";
 import ConfirmForm from "@/components/forms/ConfirmForm";
 import SalaryPaymentForm from "@/components/forms/SalaryPaymentForm";
 
@@ -67,7 +68,7 @@ export default async function EmployeeDetailPage({
           <p className="text-xs text-muted">{t(lang, "employees.monthlySalary")}</p>
           <p className="text-lg font-semibold text-foreground">
             {employee.monthly_salary != null
-              ? `${t(lang, "common.currency")}${employee.monthly_salary}`
+              ? `${t(lang, "common.currency")}${formatCurrency(employee.monthly_salary)}`
               : "—"}
           </p>
         </div>
@@ -120,7 +121,7 @@ export default async function EmployeeDetailPage({
                     <td className="px-4 py-2">{p.pay_period}</td>
                     <td className="px-4 py-2 text-right font-medium">
                       {t(lang, "common.currency")}
-                      {p.amount}
+                      {formatCurrency(p.amount)}
                     </td>
                     <td className="px-4 py-2">
                       <span

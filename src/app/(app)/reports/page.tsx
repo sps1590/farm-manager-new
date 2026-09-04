@@ -2,10 +2,7 @@ import Link from "next/link";
 import { requireOwner } from "@/lib/permissions";
 import { getFinancialSummary, getExpenseBreakdown } from "@/lib/repo";
 import { t, type DictKey } from "@/lib/i18n";
-
-function fmtAmount(n: number) {
-  return new Intl.NumberFormat("en-US", { maximumFractionDigits: 0 }).format(n);
-}
+import { formatCurrency } from "@/lib/format";
 
 export default async function ReportsPage({
   searchParams,
@@ -57,21 +54,21 @@ export default async function ReportsPage({
           <p className="text-xs text-muted">{t(lang, "reports.income")}</p>
           <p className="text-lg font-semibold text-primary">
             {t(lang, "common.currency")}
-            {fmtAmount(summary.totalIncome)}
+            {formatCurrency(summary.totalIncome)}
           </p>
         </div>
         <div className="card p-4">
           <p className="text-xs text-muted">{t(lang, "reports.expenses")}</p>
           <p className="text-lg font-semibold text-danger">
             {t(lang, "common.currency")}
-            {fmtAmount(summary.totalExpenses)}
+            {formatCurrency(summary.totalExpenses)}
           </p>
         </div>
         <div className="card p-4">
           <p className="text-xs text-muted">{t(lang, "reports.payroll")}</p>
           <p className="text-lg font-semibold text-danger">
             {t(lang, "common.currency")}
-            {fmtAmount(summary.totalPayroll)}
+            {formatCurrency(summary.totalPayroll)}
           </p>
         </div>
         <div className="card p-4">
@@ -82,7 +79,7 @@ export default async function ReportsPage({
             }`}
           >
             {t(lang, "common.currency")}
-            {fmtAmount(summary.netProfit)}
+            {formatCurrency(summary.netProfit)}
           </p>
         </div>
       </div>
@@ -112,7 +109,7 @@ export default async function ReportsPage({
                     </td>
                     <td className="px-4 py-2 text-right font-medium">
                       {t(lang, "common.currency")}
-                      {fmtAmount(b.total)}
+                      {formatCurrency(b.total)}
                     </td>
                   </tr>
                 ))}

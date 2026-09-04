@@ -9,9 +9,7 @@ import {
   getPartner,
 } from "@/lib/repo";
 import { t } from "@/lib/i18n";
-function fmtAmount(n: number) {
-  return new Intl.NumberFormat("en-US", { maximumFractionDigits: 0 }).format(n);
-}
+import { formatCurrency, formatQuantity } from "@/lib/format";
 
 export default async function DashboardPage() {
   const user = await requireUser();
@@ -44,7 +42,7 @@ export default async function DashboardPage() {
               {t(lang, "partners.totalInvested")}:{" "}
               <span className="font-medium text-foreground">
                 {t(lang, "common.currency")}
-                {fmtAmount(
+                {formatCurrency(
                   ownerPartners
                     .filter((p) => p.status === "active")
                     .reduce((sum, p) => sum + Math.max(0, p.netInvestment), 0)
@@ -73,7 +71,7 @@ export default async function DashboardPage() {
               {t(lang, "partners.netInvestment")}:{" "}
               <span className="font-medium text-foreground">
                 {t(lang, "common.currency")}
-                {fmtAmount(ownPartnership.netInvestment)}
+                {formatCurrency(ownPartnership.netInvestment)}
               </span>
               {" · "}
               {t(lang, "partners.ownershipPercent")}:{" "}
@@ -114,16 +112,16 @@ export default async function DashboardPage() {
                   </dd>
                   <dt className="text-muted">{t(lang, "dashboard.currentStock")}</dt>
                   <dd className="text-right font-medium text-foreground">
-                    {fmtAmount(row.currentStock)}{" "}
+                    {formatQuantity(row.currentStock)}{" "}
                     {lang === "bn" ? row.species.unit_bn : row.species.unit_en}
                   </dd>
                   <dt className="text-muted">{t(lang, "dashboard.last30Purchases")}</dt>
                   <dd className="text-right font-medium text-foreground">
-                    {t(lang, "common.currency")}{fmtAmount(row.purchases30d)}
+                    {t(lang, "common.currency")}{formatCurrency(row.purchases30d)}
                   </dd>
                   <dt className="text-muted">{t(lang, "dashboard.last30Sales")}</dt>
                   <dd className="text-right font-medium text-foreground">
-                    {t(lang, "common.currency")}{fmtAmount(row.sales30d)}
+                    {t(lang, "common.currency")}{formatCurrency(row.sales30d)}
                   </dd>
                   <dt className="text-muted">{t(lang, "dashboard.net30")}</dt>
                   <dd
@@ -131,7 +129,7 @@ export default async function DashboardPage() {
                       net >= 0 ? "text-primary" : "text-danger"
                     }`}
                   >
-                    {t(lang, "common.currency")}{fmtAmount(net)}
+                    {t(lang, "common.currency")}{formatCurrency(net)}
                   </dd>
                 </dl>
               </div>
@@ -188,7 +186,7 @@ export default async function DashboardPage() {
                     >
                       {a.kind === "sale" ? "+" : "-"}
                       {t(lang, "common.currency")}
-                      {fmtAmount(a.total_amount)}
+                      {formatCurrency(a.total_amount)}
                     </span>
                   </li>
                 );

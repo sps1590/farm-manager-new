@@ -4,6 +4,7 @@ import { listPurchases, listSpecies } from "@/lib/repo";
 import { deletePurchaseAction } from "@/lib/actions/purchases";
 import { t, type DictKey } from "@/lib/i18n";
 import ConfirmForm from "@/components/forms/ConfirmForm";
+import { formatCurrency } from "@/lib/format";
 
 export default async function PurchasesPage() {
   const user = await requirePermission("purchases", "view");
@@ -63,7 +64,7 @@ export default async function PurchasesPage() {
                     </td>
                     <td className="px-4 py-2 text-muted">{p.vendor || "—"}</td>
                     <td className="px-4 py-2 text-right font-medium">
-                      {t(lang, "common.currency")}{p.total_amount}
+                      {t(lang, "common.currency")}{formatCurrency(p.total_amount)}
                     </td>
                     <td className="px-4 py-2 text-right">
                       {canDelete && (
@@ -88,7 +89,7 @@ export default async function PurchasesPage() {
                   {t(lang, "common.totalAmount")}
                 </td>
                 <td className="px-4 py-2 text-right font-bold text-foreground">
-                  {t(lang, "common.currency")}{total}
+                  {t(lang, "common.currency")}{formatCurrency(total)}
                 </td>
                 <td />
               </tr>
