@@ -87,8 +87,15 @@ export default async function DashboardPage() {
               </span>
               {" · "}
               {t(lang, "partners.profitSharePercent")}:{" "}
-              <span className="font-medium text-foreground">
-                {ownPartnership.profitSharePercent}%
+              <span
+                className={`font-medium ${
+                  ownPartnership.profitShareAmount < 0
+                    ? "text-danger"
+                    : "text-foreground"
+                }`}
+              >
+                {ownPartnership.profitSharePercent.toFixed(1)}% ({t(lang, "common.currency")}
+                {formatCurrency(ownPartnership.profitShareAmount)})
               </span>
             </p>
           </div>

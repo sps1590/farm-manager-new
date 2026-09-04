@@ -284,6 +284,12 @@ Database: Neon Postgres, provisioned through Vercel's Storage integration.
 
 ## Changelog
 
+- **2026-09-04** — Total amount on the New sale/purchase forms now
+  auto-calculates from Quantity x Unit price (`useAutoTotal` hook,
+  `src/hooks/useAutoTotal.ts`); still a normal editable field for manual
+  overrides. Partnership's "Distributable to partners"/"Total allocated" and
+  the dashboard's "Your Partnership" profit-share figure now show both the
+  % and the computed ৳ amount, not just the %.
 - **2026-09-04** — New sale form now offers a species-specific "Product
   type" preset (Cow → Cow/Milk/Calf; Chicken/Duck/Pigeon-Quail → the bird
   (meat)/Egg) that fills in the Item field, with a "Custom / other" option

@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
 import { requireUser } from "@/lib/auth";
-import { listPartners, getFarm } from "@/lib/repo";
+import { listPartners, getFarm, getFinancialSummary } from "@/lib/repo";
 import { updateFarmReserveAction } from "@/lib/actions/partners";
 import { t, type DictKey } from "@/lib/i18n";
 import { formatCurrency } from "@/lib/format";
@@ -15,9 +15,10 @@ export default async function PartnersPage() {
     redirect("/dashboard");
   }
 
-  const [partners, farm] = await Promise.all([
+  const [partners, farm, financials] = await Promise.all([
     listPartners(user.farm_id),
     getFarm(user.farm_id),
+    getFinancialSummary(user.farm_id),
   ]);
   const reserve = farm?.profit_reserve_percent ?? 0;
   const activePartners = partners.filter((p) => p.status === "active");
@@ -30,6 +31,8 @@ export default async function PartnersPage() {
     0
   );
   const distributable = 100 - reserve;
+  const distributableAmount = financials.netProfit * (distributable / 100);
+  const totalAllocatedAmount = financials.netProfit * (totalShare / 100);
 
   return (
     <div className="space-y-6">
@@ -81,7 +84,13 @@ export default async function PartnersPage() {
           </div>
           <div>
             <p className="text-xs text-muted">{t(lang, "partners.distributable")}</p>
-            <p className="font-semibold text-foreground">{distributable}%</p>
+            <p className="font-semibold text-foreground">
+              {distributable}%
+              <span className="ml-1 font-normal text-muted">
+                ({t(lang, "common.currency")}
+                {formatCurrency(distributableAmount)})
+              </span>
+            </p>
           </div>
           <div>
             <p className="text-xs text-muted">{t(lang, "partners.totalAllocated")}</p>
@@ -93,6 +102,10 @@ export default async function PartnersPage() {
               }`}
             >
               {totalShare}%
+              <span className="ml-1 font-normal text-muted">
+                ({t(lang, "common.currency")}
+                {formatCurrency(totalAllocatedAmount)})
+              </span>
             </p>
           </div>
           <div>

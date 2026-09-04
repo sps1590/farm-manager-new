@@ -6,6 +6,7 @@ import type { FormState } from "@/lib/actions/batches";
 import SubmitButton from "@/components/SubmitButton";
 import { t, type DictKey } from "@/lib/i18n";
 import type { BatchRow, Language, SpeciesRow } from "@/lib/types";
+import { useAutoTotal } from "@/hooks/useAutoTotal";
 
 const initialState: FormState = {};
 
@@ -40,6 +41,7 @@ export default function NewSaleForm({
   const [speciesId, setSpeciesId] = useState("");
   const [productType, setProductType] = useState("");
   const [itemName, setItemName] = useState("");
+  const autoTotal = useAutoTotal();
 
   const selectedSpecies = speciesId ? speciesById[Number(speciesId)] : undefined;
   const productOptions = selectedSpecies
@@ -135,7 +137,16 @@ export default function NewSaleForm({
           <label className="label" htmlFor="quantity">
             {t(lang, "common.quantity")}
           </label>
-          <input id="quantity" name="quantity" type="number" step="any" min="0" className="input" />
+          <input
+            id="quantity"
+            name="quantity"
+            type="number"
+            step="any"
+            min="0"
+            className="input"
+            value={autoTotal.quantity}
+            onChange={(e) => autoTotal.onQuantityChange(e.target.value)}
+          />
         </div>
         <div>
           <label className="label" htmlFor="unit">
@@ -147,7 +158,16 @@ export default function NewSaleForm({
           <label className="label" htmlFor="unit_price">
             {t(lang, "common.unitPrice")}
           </label>
-          <input id="unit_price" name="unit_price" type="number" step="any" min="0" className="input" />
+          <input
+            id="unit_price"
+            name="unit_price"
+            type="number"
+            step="any"
+            min="0"
+            className="input"
+            value={autoTotal.unitPrice}
+            onChange={(e) => autoTotal.onUnitPriceChange(e.target.value)}
+          />
         </div>
         <div>
           <label className="label" htmlFor="total_amount">
@@ -161,7 +181,10 @@ export default function NewSaleForm({
             min="0"
             required
             className="input"
+            value={autoTotal.total}
+            onChange={(e) => autoTotal.onTotalChange(e.target.value)}
           />
+          <p className="mt-1 text-xs text-muted">{t(lang, "common.autoCalcHint")}</p>
         </div>
         <div>
           <label className="label" htmlFor="sale_date">
