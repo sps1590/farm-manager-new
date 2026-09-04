@@ -63,9 +63,17 @@ async function seedDefaultFarmAndOwner() {
   const farmId = (farmRows[0] as { id: number }).id;
   const passwordHash = bcrypt.hashSync("farm1234", 10);
   await sql`
-    INSERT INTO users (farm_id, username, password_hash, name, role, language)
-    VALUES (${farmId}, 'owner', ${passwordHash}, 'খামারের মালিক', 'owner', 'bn')
+    INSERT INTO users (farm_id, username, password_hash, name, role, language, is_partner)
+    VALUES (${farmId}, 'owner', ${passwordHash}, 'খামারের মালিক', 'owner', 'bn', true)
   `;
+}
+
+// Every owner is also a financial partner in their own farm by default (they
+// can invest/withdraw like any other partner). Idempotent backfill for
+// owner rows created before this was the default -- new registrations set
+// is_partner at insert time instead (see registerAction).
+async function backfillOwnerPartners() {
+  await sql`UPDATE users SET is_partner = true WHERE role = 'owner' AND is_partner = false`;
 }
 
 async function ensureSchema(): Promise<void> {
@@ -74,6 +82,7 @@ async function ensureSchema(): Promise<void> {
   }
   await seedSpecies();
   await seedDefaultFarmAndOwner();
+  await backfillOwnerPartners();
 }
 
 export async function getDb() {

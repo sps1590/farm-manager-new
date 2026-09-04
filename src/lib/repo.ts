@@ -3,13 +3,16 @@ import { getDb } from "./db";
 import {
   emptyPermissions,
   type BatchRow,
+  type EmployeeRow,
   type FarmRow,
+  type FinancialSummary,
   type MedicalRecordRow,
   type PartnerInvestmentRow,
   type PartnerStatus,
   type PartnerSummary,
   type PurchaseRow,
   type SaleRow,
+  type SalaryPaymentRow,
   type SpeciesRow,
   type TeamMemberRow,
 } from "./types";
@@ -41,6 +44,34 @@ export async function getSpecies(id: number): Promise<SpeciesRow | undefined> {
   const db = await getDb();
   const rows = await db`SELECT * FROM species WHERE id = ${id}`;
   return plainRow<SpeciesRow>(rows[0]);
+}
+
+// Business-type filtering: a farm with no farm_species rows hasn't
+// configured this yet, so every species shows (backward compatible for
+// every farm that existed before the Farm Profile page did). Once
+// configured, only the selected species show -- used for the "new record"
+// dropdowns (batches/purchases/sales/medical), never for id-lookup maps on
+// list/detail pages, so a record referencing a since-disabled species still
+// displays correctly instead of going blank.
+export async function listEnabledSpecies(farmId: number): Promise<SpeciesRow[]> {
+  const db = await getDb();
+  const configured = await db`SELECT 1 FROM farm_species WHERE farm_id = ${farmId} LIMIT 1`;
+  if (configured.length === 0) {
+    return listSpecies();
+  }
+  return plainRows<SpeciesRow>(
+    await db`
+      SELECT s.* FROM species s
+      JOIN farm_species fs ON fs.species_id = s.id
+      WHERE fs.farm_id = ${farmId}
+      ORDER BY s.sort_order
+    `
+  );
+}
+
+export async function getEnabledSpeciesIds(farmId: number): Promise<Set<number>> {
+  const enabled = await listEnabledSpecies(farmId);
+  return new Set(enabled.map((s) => s.id));
 }
 
 export async function listBatches(
@@ -163,7 +194,7 @@ export interface SpeciesSummary {
 
 export async function dashboardSummary(farmId: number): Promise<SpeciesSummary[]> {
   const db = await getDb();
-  const species = await listSpecies();
+  const species = await listEnabledSpecies(farmId);
   const since = new Date(Date.now() - 30 * 86400000)
     .toISOString()
     .slice(0, 10);
@@ -295,12 +326,80 @@ export async function getFarm(farmId: number): Promise<FarmRow | undefined> {
   return plainRow<FarmRow>(rows[0]);
 }
 
+export interface DateRange {
+  from?: string;
+  to?: string;
+}
+
+// Automated P&L: income (sales) minus expenses (purchases, every category
+// including utility) minus payroll (paid salary payments). No range = all
+// time -- that's what the Partnership page uses to compute each partner's
+// profit-share Amount (see fetchPartnerSummaries below). The /reports page
+// passes an explicit range for periodic reporting.
+export async function getFinancialSummary(
+  farmId: number,
+  range?: DateRange
+): Promise<FinancialSummary> {
+  const db = await getDb();
+  const from = range?.from ?? "0001-01-01";
+  const to = range?.to ?? "9999-12-31";
+
+  const incomeRows = await db`
+    SELECT COALESCE(SUM(total_amount),0) as total FROM sales
+    WHERE farm_id = ${farmId} AND sale_date >= ${from} AND sale_date <= ${to}
+  `;
+  const expenseRows = await db`
+    SELECT COALESCE(SUM(total_amount),0) as total FROM purchases
+    WHERE farm_id = ${farmId} AND purchase_date >= ${from} AND purchase_date <= ${to}
+  `;
+  const payrollRows = await db`
+    SELECT COALESCE(SUM(amount),0) as total FROM salary_payments
+    WHERE farm_id = ${farmId} AND status = 'paid'
+      AND paid_date IS NOT NULL AND paid_date >= ${from} AND paid_date <= ${to}
+  `;
+
+  const totalIncome = Number((incomeRows[0] as { total: number }).total);
+  const totalExpenses = Number((expenseRows[0] as { total: number }).total);
+  const totalPayroll = Number((payrollRows[0] as { total: number }).total);
+
+  return {
+    totalIncome,
+    totalExpenses,
+    totalPayroll,
+    netProfit: totalIncome - totalExpenses - totalPayroll,
+  };
+}
+
+export interface ExpenseCategoryTotal {
+  category: string;
+  total: number;
+}
+
+export async function getExpenseBreakdown(
+  farmId: number,
+  range?: DateRange
+): Promise<ExpenseCategoryTotal[]> {
+  const db = await getDb();
+  const from = range?.from ?? "0001-01-01";
+  const to = range?.to ?? "9999-12-31";
+  return plainRows<ExpenseCategoryTotal>(
+    await db`
+      SELECT category, COALESCE(SUM(total_amount),0) as total
+      FROM purchases
+      WHERE farm_id = ${farmId} AND purchase_date >= ${from} AND purchase_date <= ${to}
+      GROUP BY category
+      ORDER BY total DESC
+    `
+  );
+}
+
 interface RawPartnerRow {
   id: number;
   name: string;
   email: string | null;
   phone: string | null;
   profit_share_percent: number;
+  profit_share_auto: boolean;
   partner_status: PartnerStatus;
   net_investment: number;
 }
@@ -320,12 +419,12 @@ async function fetchPartnerSummaries(
   farmId: number
 ): Promise<PartnerSummary[]> {
   const rows = (await db`
-    SELECT u.id, u.name, u.email, u.phone, u.profit_share_percent, u.partner_status,
+    SELECT u.id, u.name, u.email, u.phone, u.profit_share_percent, u.profit_share_auto, u.partner_status,
       COALESCE(SUM(CASE WHEN pi.entry_type = 'contribution' THEN pi.amount ELSE -pi.amount END), 0) as net_investment
     FROM users u
     LEFT JOIN partner_investments pi ON pi.user_id = u.id
     WHERE u.farm_id = ${farmId} AND u.is_partner = true
-    GROUP BY u.id, u.name, u.email, u.phone, u.profit_share_percent, u.partner_status
+    GROUP BY u.id, u.name, u.email, u.phone, u.profit_share_percent, u.profit_share_auto, u.partner_status
     ORDER BY (u.partner_status = 'active') DESC, u.name
   `) as unknown as RawPartnerRow[];
 
@@ -333,19 +432,43 @@ async function fetchPartnerSummaries(
     .filter((r) => r.partner_status === "active")
     .reduce((sum, r) => sum + Math.max(0, Number(r.net_investment)), 0);
 
-  return rows.map((r) => ({
-    id: r.id,
-    name: r.name,
-    email: r.email,
-    phone: r.phone,
-    netInvestment: Number(r.net_investment),
-    profitSharePercent: Number(r.profit_share_percent),
-    status: r.partner_status,
-    ownershipPercent:
+  // Profit share Amount is derived from the farm's all-time Net Profit (see
+  // getFinancialSummary) and reserve % -- same figures for every partner in
+  // this farm, so fetch once rather than per row.
+  const [farm, financials] = await Promise.all([
+    getFarm(farmId),
+    getFinancialSummary(farmId),
+  ]);
+  const reservePercent = farm?.profit_reserve_percent ?? 0;
+  const distributablePool =
+    financials.netProfit * ((100 - reservePercent) / 100);
+
+  return rows.map((r) => {
+    const ownershipPercent =
       r.partner_status === "active" && total > 0
         ? (Math.max(0, Number(r.net_investment)) / total) * 100
-        : 0,
-  }));
+        : 0;
+    const profitShareAuto = Boolean(r.profit_share_auto);
+    const profitSharePercent = profitShareAuto
+      ? ownershipPercent
+      : Number(r.profit_share_percent);
+
+    return {
+      id: r.id,
+      name: r.name,
+      email: r.email,
+      phone: r.phone,
+      netInvestment: Number(r.net_investment),
+      status: r.partner_status,
+      ownershipPercent,
+      profitShareAuto,
+      profitSharePercent,
+      profitShareAmount:
+        r.partner_status === "active"
+          ? distributablePool * (profitSharePercent / 100)
+          : 0,
+    };
+  });
 }
 
 export async function listPartners(farmId: number): Promise<PartnerSummary[]> {
@@ -372,6 +495,39 @@ export async function listPartnerEntries(
       SELECT * FROM partner_investments
       WHERE user_id = ${partnerId} AND farm_id = ${farmId}
       ORDER BY entry_date DESC, id DESC
+    `
+  );
+}
+
+export async function listEmployees(farmId: number): Promise<EmployeeRow[]> {
+  const db = await getDb();
+  return plainRows<EmployeeRow>(
+    await db`
+      SELECT * FROM employees WHERE farm_id = ${farmId}
+      ORDER BY (status = 'active') DESC, name
+    `
+  );
+}
+
+export async function getEmployee(
+  id: number,
+  farmId: number
+): Promise<EmployeeRow | undefined> {
+  const db = await getDb();
+  const rows = await db`SELECT * FROM employees WHERE id = ${id} AND farm_id = ${farmId}`;
+  return plainRow<EmployeeRow>(rows[0]);
+}
+
+export async function listSalaryPayments(
+  employeeId: number,
+  farmId: number
+): Promise<SalaryPaymentRow[]> {
+  const db = await getDb();
+  return plainRows<SalaryPaymentRow>(
+    await db`
+      SELECT * FROM salary_payments
+      WHERE employee_id = ${employeeId} AND farm_id = ${farmId}
+      ORDER BY pay_period DESC, id DESC
     `
   );
 }

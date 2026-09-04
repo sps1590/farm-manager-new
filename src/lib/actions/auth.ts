@@ -138,8 +138,8 @@ export async function registerAction(
   try {
     const passwordHash = bcrypt.hashSync(password, 10);
     const userRows = await db`
-      INSERT INTO users (farm_id, email, phone, password_hash, name, role, language)
-      VALUES (${farmId}, ${email}, ${phone}, ${passwordHash}, ${name}, 'owner', 'bn')
+      INSERT INTO users (farm_id, email, phone, password_hash, name, role, is_partner, language)
+      VALUES (${farmId}, ${email}, ${phone}, ${passwordHash}, ${name}, 'owner', true, 'bn')
       RETURNING id
     `;
     userId = (userRows[0] as { id: number }).id;

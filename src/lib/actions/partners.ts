@@ -131,6 +131,9 @@ export async function deleteInvestmentEntryAction(formData: FormData) {
   revalidatePath("/dashboard");
 }
 
+// Manually setting a share % switches that partner out of auto-sync --
+// their share stops tracking ownership % live and stays at this value until
+// the owner resets it (see resetPartnerProfitShareAction).
 export async function updatePartnerProfitShareAction(formData: FormData) {
   const owner = await requireOwner();
   const db = await getDb();
@@ -138,7 +141,19 @@ export async function updatePartnerProfitShareAction(formData: FormData) {
   const profitShare = Number(formData.get("profit_share_percent"));
   if (!Number.isFinite(profitShare) || profitShare < 0 || profitShare > 100) return;
   await db`
-    UPDATE users SET profit_share_percent = ${profitShare}
+    UPDATE users SET profit_share_percent = ${profitShare}, profit_share_auto = false
+    WHERE id = ${partnerId} AND farm_id = ${owner.farm_id} AND is_partner = true
+  `;
+  revalidatePath(`/partners/${partnerId}`);
+  revalidatePath("/partners");
+}
+
+export async function resetPartnerProfitShareAction(formData: FormData) {
+  const owner = await requireOwner();
+  const db = await getDb();
+  const partnerId = Number(formData.get("partner_id"));
+  await db`
+    UPDATE users SET profit_share_auto = true
     WHERE id = ${partnerId} AND farm_id = ${owner.farm_id} AND is_partner = true
   `;
   revalidatePath(`/partners/${partnerId}`);

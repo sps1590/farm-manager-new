@@ -45,6 +45,7 @@ export interface UserRow {
   role: Role;
   is_partner: boolean;
   profit_share_percent: number;
+  profit_share_auto: boolean;
   partner_status: PartnerStatus;
   language: Language;
   created_at: string;
@@ -188,7 +189,16 @@ export interface PartnerSummary {
   netInvestment: number;
   ownershipPercent: number;
   profitSharePercent: number;
+  profitShareAuto: boolean;
+  profitShareAmount: number;
   status: PartnerStatus;
+}
+
+export interface FinancialSummary {
+  totalIncome: number;
+  totalExpenses: number;
+  totalPayroll: number;
+  netProfit: number;
 }
 
 export interface EmployeeRow {
@@ -201,5 +211,19 @@ export interface EmployeeRow {
   housing_provided: number;
   status: "active" | "inactive";
   notes: string | null;
+  created_at: string;
+}
+
+export type SalaryPaymentStatus = "pending" | "paid";
+
+export interface SalaryPaymentRow {
+  id: number;
+  employee_id: number;
+  amount: number;
+  pay_period: string;
+  paid_date: string | null;
+  status: SalaryPaymentStatus;
+  notes: string | null;
+  created_by: number | null;
   created_at: string;
 }

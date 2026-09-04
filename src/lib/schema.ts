@@ -36,6 +36,7 @@ export const SCHEMA_STATEMENTS: string[] = [
     role TEXT NOT NULL,
     is_partner BOOLEAN NOT NULL DEFAULT false,
     profit_share_percent DOUBLE PRECISION NOT NULL DEFAULT 0,
+    profit_share_auto BOOLEAN NOT NULL DEFAULT true,
     partner_status TEXT NOT NULL DEFAULT 'active' CHECK(partner_status IN ('active','inactive')),
     language TEXT NOT NULL DEFAULT 'bn' CHECK(language IN ('en','bn')),
     created_at TEXT NOT NULL DEFAULT ${NOW_TEXT}
@@ -48,6 +49,7 @@ export const SCHEMA_STATEMENTS: string[] = [
   // Partnership management: a partner is a users row with is_partner = true.
   `ALTER TABLE users ADD COLUMN IF NOT EXISTS is_partner BOOLEAN NOT NULL DEFAULT false`,
   `ALTER TABLE users ADD COLUMN IF NOT EXISTS profit_share_percent DOUBLE PRECISION NOT NULL DEFAULT 0`,
+  `ALTER TABLE users ADD COLUMN IF NOT EXISTS profit_share_auto BOOLEAN NOT NULL DEFAULT true`,
   `ALTER TABLE users ADD COLUMN IF NOT EXISTS partner_status TEXT NOT NULL DEFAULT 'active'`,
   `ALTER TABLE users DROP CONSTRAINT IF EXISTS users_partner_status_check`,
   `ALTER TABLE users ADD CONSTRAINT users_partner_status_check CHECK (partner_status IN ('active','inactive'))`,
@@ -109,6 +111,15 @@ export const SCHEMA_STATEMENTS: string[] = [
     unit_bn TEXT NOT NULL,
     icon TEXT NOT NULL DEFAULT '',
     sort_order INTEGER NOT NULL DEFAULT 0
+  )`,
+
+  // Business-type selection: which species a farm actually operates. No
+  // rows for a farm = "not configured yet" = every species shows (keeps
+  // every farm that existed before this feature working unchanged).
+  `CREATE TABLE IF NOT EXISTS farm_species (
+    farm_id INTEGER NOT NULL REFERENCES farms(id) ON DELETE CASCADE,
+    species_id INTEGER NOT NULL REFERENCES species(id) ON DELETE CASCADE,
+    PRIMARY KEY (farm_id, species_id)
   )`,
 
   `CREATE TABLE IF NOT EXISTS batches (

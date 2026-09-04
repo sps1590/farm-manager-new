@@ -5,6 +5,10 @@ import { listPartners, getFarm } from "@/lib/repo";
 import { updateFarmReserveAction } from "@/lib/actions/partners";
 import { t, type DictKey } from "@/lib/i18n";
 
+function fmtAmount(n: number) {
+  return new Intl.NumberFormat("en-US", { maximumFractionDigits: 0 }).format(n);
+}
+
 export default async function PartnersPage() {
   const user = await requireUser();
   const lang = user.language;
@@ -118,6 +122,9 @@ export default async function PartnersPage() {
                 <th className="px-4 py-2 font-medium text-right">
                   {t(lang, "partners.profitSharePercent")}
                 </th>
+                <th className="px-4 py-2 font-medium text-right">
+                  {t(lang, "partners.profitShareAmount")}
+                </th>
                 <th className="px-4 py-2 font-medium">{t(lang, "partners.status")}</th>
               </tr>
             </thead>
@@ -144,7 +151,13 @@ export default async function PartnersPage() {
                   <td className="px-4 py-2 text-right">
                     {p.ownershipPercent.toFixed(1)}%
                   </td>
-                  <td className="px-4 py-2 text-right">{p.profitSharePercent}%</td>
+                  <td className="px-4 py-2 text-right">
+                    {p.profitSharePercent.toFixed(1)}%
+                  </td>
+                  <td className="px-4 py-2 text-right">
+                    {t(lang, "common.currency")}
+                    {fmtAmount(p.profitShareAmount)}
+                  </td>
                   <td className="px-4 py-2">
                     <span
                       className={`rounded-full px-2 py-0.5 text-xs font-medium ${

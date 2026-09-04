@@ -4,12 +4,17 @@ import { getPartner, listPartnerEntries } from "@/lib/repo";
 import {
   deleteInvestmentEntryAction,
   updatePartnerProfitShareAction,
+  resetPartnerProfitShareAction,
   deactivatePartnerAction,
   reactivatePartnerAction,
 } from "@/lib/actions/partners";
 import { t, type DictKey } from "@/lib/i18n";
 import ConfirmForm from "@/components/forms/ConfirmForm";
 import PartnerInvestmentForm from "@/components/forms/PartnerInvestmentForm";
+
+function fmtAmount(n: number) {
+  return new Intl.NumberFormat("en-US", { maximumFractionDigits: 0 }).format(n);
+}
 
 export default async function PartnerDetailPage({
   params,
@@ -86,14 +91,34 @@ export default async function PartnerDetailPage({
             {t(lang, "partners.profitSharePercent")}
           </p>
           <p className="text-lg font-semibold text-foreground">
-            {partner.profitSharePercent}%
+            {partner.profitSharePercent.toFixed(1)}%
+          </p>
+          <p className="text-sm text-muted">
+            {t(lang, "common.currency")}
+            {fmtAmount(partner.profitShareAmount)}
           </p>
         </div>
       </div>
 
       {isOwner && (
         <div className="card space-y-3 p-4">
-          <p className="label">{t(lang, "partners.setShare")}</p>
+          <div className="flex items-center justify-between">
+            <p className="label">{t(lang, "partners.setShare")}</p>
+            <span
+              className={`rounded-full px-2 py-0.5 text-xs font-medium ${
+                partner.profitShareAuto
+                  ? "bg-primary/10 text-primary"
+                  : "bg-accent/10 text-accent"
+              }`}
+            >
+              {t(
+                lang,
+                partner.profitShareAuto
+                  ? "partners.autoSynced"
+                  : "partners.customShare"
+              )}
+            </span>
+          </div>
           <form
             action={updatePartnerProfitShareAction}
             className="flex flex-wrap items-center gap-3"
@@ -105,13 +130,25 @@ export default async function PartnerDetailPage({
               step="any"
               min="0"
               max="100"
-              defaultValue={partner.profitSharePercent}
+              defaultValue={partner.profitSharePercent.toFixed(1)}
               className="input w-32"
             />
             <button type="submit" className="btn-secondary">
               {t(lang, "common.save")}
             </button>
           </form>
+          <p className="text-xs text-muted">{t(lang, "partners.shareHint")}</p>
+          {!partner.profitShareAuto && (
+            <form action={resetPartnerProfitShareAction}>
+              <input type="hidden" name="partner_id" value={partner.id} />
+              <button
+                type="submit"
+                className="text-xs text-primary hover:underline"
+              >
+                {t(lang, "partners.resetToAuto")}
+              </button>
+            </form>
+          )}
         </div>
       )}
 
