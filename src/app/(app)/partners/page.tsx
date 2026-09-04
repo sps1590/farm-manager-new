@@ -4,7 +4,7 @@ import { requireUser } from "@/lib/auth";
 import { listPartners, getFarm, getFinancialSummary } from "@/lib/repo";
 import { updateFarmReserveAction } from "@/lib/actions/partners";
 import { t, type DictKey } from "@/lib/i18n";
-import { formatCurrency } from "@/lib/format";
+import { formatCurrency, formatPercentTruncated } from "@/lib/format";
 
 export default async function PartnersPage() {
   const user = await requireUser();
@@ -101,7 +101,7 @@ export default async function PartnersPage() {
                   : "text-danger"
               }`}
             >
-              {totalShare.toFixed(3)}%
+              {formatPercentTruncated(totalShare)}%
               <span className="ml-1 font-normal text-muted">
                 ({t(lang, "common.currency")}
                 {formatCurrency(totalAllocatedAmount)})
