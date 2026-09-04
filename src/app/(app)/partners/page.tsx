@@ -101,7 +101,7 @@ export default async function PartnersPage() {
                   : "text-danger"
               }`}
             >
-              {totalShare}%
+              {totalShare.toFixed(3)}%
               <span className="ml-1 font-normal text-muted">
                 ({t(lang, "common.currency")}
                 {formatCurrency(totalAllocatedAmount)})
