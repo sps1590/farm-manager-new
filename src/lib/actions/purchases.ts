@@ -25,7 +25,7 @@ export async function createPurchaseAction(
 
   const category = String(formData.get("category")) as PurchaseCategory;
   const itemName = String(formData.get("item_name") ?? "").trim();
-  const speciesId = formData.get("species_id")
+  let speciesId = formData.get("species_id")
     ? Number(formData.get("species_id"))
     : null;
   const batchId = formData.get("batch_id")
@@ -48,6 +48,13 @@ export async function createPurchaseAction(
   }
   if (!totalAmount || totalAmount <= 0) {
     return { error: "Total amount must be greater than zero." };
+  }
+
+  if (!speciesId && batchId) {
+    const batchRows = await db`
+      SELECT species_id FROM batches WHERE id = ${batchId} AND farm_id = ${user.farm_id}
+    `;
+    if (batchRows[0]) speciesId = Number(batchRows[0].species_id);
   }
 
   await db`

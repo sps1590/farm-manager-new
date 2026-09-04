@@ -154,7 +154,11 @@ export default async function PartnersPage() {
                   <td className="px-4 py-2 text-right">
                     {p.profitSharePercent.toFixed(1)}%
                   </td>
-                  <td className="px-4 py-2 text-right">
+                  <td
+                    className={`px-4 py-2 text-right ${
+                      p.profitShareAmount < 0 ? "text-danger" : ""
+                    }`}
+                  >
                     {t(lang, "common.currency")}
                     {fmtAmount(p.profitShareAmount)}
                   </td>

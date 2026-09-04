@@ -93,7 +93,11 @@ export default async function PartnerDetailPage({
           <p className="text-lg font-semibold text-foreground">
             {partner.profitSharePercent.toFixed(1)}%
           </p>
-          <p className="text-sm text-muted">
+          <p
+            className={`text-sm ${
+              partner.profitShareAmount < 0 ? "text-danger" : "text-muted"
+            }`}
+          >
             {t(lang, "common.currency")}
             {fmtAmount(partner.profitShareAmount)}
           </p>
