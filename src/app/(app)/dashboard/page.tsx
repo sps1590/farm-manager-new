@@ -7,13 +7,15 @@ import {
   listSpecies,
   listPartners,
   getPartner,
+  getFarm,
 } from "@/lib/repo";
-import { t } from "@/lib/i18n";
+import { t, roleLabel } from "@/lib/i18n";
 import { formatCurrency, formatQuantity } from "@/lib/format";
 
 export default async function DashboardPage() {
   const user = await requireUser();
   const lang = user.language;
+  const farm = await getFarm(user.farm_id);
   const summary = await dashboardSummary(user.farm_id);
   const upcoming = await listUpcomingMedical(user.farm_id, 14);
   const activity = await recentActivity(user.farm_id, 8);
@@ -26,10 +28,15 @@ export default async function DashboardPage() {
   return (
     <div className="space-y-8">
       <div>
-        <h1 className="text-2xl font-bold text-foreground">
+        <p className="text-xs font-medium uppercase tracking-wide text-muted">
           {t(lang, "dashboard.title")}
+        </p>
+        <h1 className="text-2xl font-bold text-foreground">
+          {farm?.name ?? t(lang, "dashboard.title")}
         </h1>
-        <p className="text-sm text-muted">{t(lang, "dashboard.subtitle")}</p>
+        <p className="text-sm text-muted">
+          {user.name} · {roleLabel(user.role, lang)}
+        </p>
       </div>
 
       {ownerPartners && (

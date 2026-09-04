@@ -59,6 +59,8 @@ const dictionary = {
     "team.error.roleRequired": "Choose a role.",
     "team.error.identifierTaken": "That email or phone is already in use.",
     "team.error.notFound": "That team member could not be found.",
+    "roles.owner": "Owner",
+    "roles.partner": "Partner / Co-owner",
     "roles.manager": "Manager",
     "roles.employee": "Employee",
     "roles.other": "Other (custom)",
@@ -291,6 +293,8 @@ const dictionary = {
     "team.error.roleRequired": "একটি ভূমিকা নির্বাচন করুন।",
     "team.error.identifierTaken": "এই ইমেইল বা ফোন ইতিমধ্যে ব্যবহৃত হচ্ছে।",
     "team.error.notFound": "সেই টিম সদস্য পাওয়া যায়নি।",
+    "roles.owner": "মালিক",
+    "roles.partner": "অংশীদার / সহ-মালিক",
     "roles.manager": "ম্যানেজার",
     "roles.employee": "কর্মচারী",
     "roles.other": "অন্যান্য (কাস্টম)",
@@ -477,4 +481,19 @@ export function t(lang: Language, key: DictKey): string {
 
 export function getDictionary(lang: Language) {
   return dictionary[lang];
+}
+
+const KNOWN_ROLE_KEYS: Record<string, DictKey> = {
+  owner: "roles.owner",
+  partner: "roles.partner",
+  manager: "roles.manager",
+  employee: "roles.employee",
+};
+
+// Roles are free text (see Role in types.ts) -- translate the handful of
+// known presets, otherwise show whatever custom label the owner typed in
+// (e.g. "Data entry operator", "Cleaner") as-is.
+export function roleLabel(role: string, lang: Language): string {
+  const key = KNOWN_ROLE_KEYS[role.toLowerCase()];
+  return key ? t(lang, key) : role;
 }

@@ -3,7 +3,7 @@ import Link from "next/link";
 import { getSessionUser } from "@/lib/auth";
 import { hasPermission } from "@/lib/permissions";
 import { logoutAction, toggleLanguageAction } from "@/lib/actions/auth";
-import { t } from "@/lib/i18n";
+import { t, roleLabel } from "@/lib/i18n";
 import type { Module } from "@/lib/types";
 
 const NAV_ITEMS: Array<{
@@ -90,7 +90,7 @@ export default async function AppLayout({
               {user.name}
             </p>
             <p className="truncate text-xs text-muted capitalize">
-              {user.role}
+              {roleLabel(user.role, lang)}
             </p>
           </div>
           <form action={toggleLanguageAction}>

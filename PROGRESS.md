@@ -284,6 +284,12 @@ Database: Neon Postgres, provisioned through Vercel's Storage integration.
 
 ## Changelog
 
+- **2026-09-04** — Dashboard now shows the farm name plus the signed-in
+  user's name and position (Owner / Partner / Manager / Employee / any
+  custom role text) right below it — new `roleLabel()` helper in `i18n.ts`,
+  also used by the sidebar footer for consistency. All currency amounts
+  across the app now render with thousand separators and 2 decimal places
+  (`formatCurrency()` in `src/lib/format.ts`).
 - **2026-09-02** — Owner is now a partner by default (registration +
   idempotent backfill for existing owners). Profit share % auto-syncs to
   ownership % live (with manual override + reset-to-auto still available);
