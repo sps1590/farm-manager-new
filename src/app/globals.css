@@ -1,90 +1,153 @@
 @import "tailwindcss";
 
 :root {
-  --background: #f7f5f0;
+  --background: #f7f6f0;
   --surface: #ffffff;
-  --foreground: #1f2a1f;
-  --muted: #6b7a67;
-  --border: #e2e0d5;
-  --primary: #2f6d3c;
+  --surface-hover: #f0efe6;
+  --foreground: #1b241d;
+  --muted: #5c6b60;
+  --border: #e3e0d2;
+  --primary: #1b6e4a;
+  --primary-hover: #155a3c;
   --primary-foreground: #ffffff;
-  --accent: #c97a2b;
-  --danger: #b3432b;
+  --accent: #b8761f;
+  --accent-foreground: #ffffff;
+  --danger: #ab3a24;
+  --danger-foreground: #ffffff;
+  --ring: rgba(27, 110, 74, 0.28);
 }
 
 @theme inline {
   --color-background: var(--background);
   --color-surface: var(--surface);
+  --color-surface-hover: var(--surface-hover);
   --color-foreground: var(--foreground);
   --color-muted: var(--muted);
   --color-border: var(--border);
   --color-primary: var(--primary);
+  --color-primary-hover: var(--primary-hover);
   --color-primary-foreground: var(--primary-foreground);
   --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
   --color-danger: var(--danger);
+  --color-danger-foreground: var(--danger-foreground);
+  --font-sans: var(--font-inter), var(--font-noto-bengali), ui-sans-serif,
+    system-ui, "Segoe UI", Roboto, Arial, sans-serif;
 }
 
 body {
   background: var(--background);
   color: var(--foreground);
-  font-family:
-    ui-sans-serif, system-ui, -apple-system, "Segoe UI", "Noto Sans Bengali",
-    "Nirmala UI", Roboto, Arial, sans-serif;
+  font-family: var(--font-sans);
+}
+
+::selection {
+  background: var(--primary);
+  color: var(--primary-foreground);
 }
 
 .card {
   background: var(--surface);
   border: 1px solid var(--border);
-  border-radius: 0.75rem;
+  border-radius: 1rem;
+  box-shadow:
+    0 1px 2px rgba(27, 36, 29, 0.04),
+    0 6px 16px -8px rgba(27, 36, 29, 0.08);
 }
 
 .btn-primary {
   background: var(--primary);
   color: var(--primary-foreground);
-  border-radius: 0.5rem;
-  padding: 0.5rem 1rem;
+  border-radius: 0.65rem;
+  padding: 0.55rem 1.1rem;
   font-weight: 600;
-  transition: opacity 0.15s ease;
+  font-size: 0.9rem;
+  line-height: 1.25rem;
+  box-shadow: 0 1px 2px rgba(27, 110, 74, 0.18);
+  transition:
+    background-color 0.15s ease,
+    box-shadow 0.15s ease,
+    transform 0.05s ease;
   display: inline-flex;
   align-items: center;
   justify-content: center;
+  gap: 0.4rem;
 }
 .btn-primary:hover {
-  opacity: 0.9;
+  background: var(--primary-hover);
+  box-shadow: 0 4px 12px -4px rgba(27, 110, 74, 0.35);
+}
+.btn-primary:active {
+  transform: translateY(1px);
+}
+.btn-primary:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+  box-shadow: none;
 }
 
 .btn-secondary {
-  background: transparent;
+  background: var(--surface);
   color: var(--foreground);
   border: 1px solid var(--border);
-  border-radius: 0.5rem;
-  padding: 0.5rem 1rem;
+  border-radius: 0.65rem;
+  padding: 0.55rem 1.1rem;
   font-weight: 600;
+  font-size: 0.9rem;
+  line-height: 1.25rem;
+  transition:
+    background-color 0.15s ease,
+    border-color 0.15s ease,
+    transform 0.05s ease;
   display: inline-flex;
   align-items: center;
   justify-content: center;
+  gap: 0.4rem;
 }
 .btn-secondary:hover {
-  background: var(--background);
+  background: var(--surface-hover);
+  border-color: var(--muted);
+}
+.btn-secondary:active {
+  transform: translateY(1px);
+}
+.btn-secondary:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
 }
 
 .input {
   width: 100%;
   border: 1px solid var(--border);
-  border-radius: 0.5rem;
-  padding: 0.5rem 0.75rem;
+  border-radius: 0.65rem;
+  padding: 0.55rem 0.8rem;
   background: var(--surface);
   color: var(--foreground);
+  font-size: 0.9rem;
+  transition:
+    border-color 0.15s ease,
+    box-shadow 0.15s ease;
+}
+.input::placeholder {
+  color: var(--muted);
+  opacity: 0.8;
 }
 .input:focus {
-  outline: 2px solid var(--primary);
-  outline-offset: 1px;
+  outline: none;
+  border-color: var(--primary);
+  box-shadow: 0 0 0 3px var(--ring);
+}
+.input:disabled {
+  background: var(--background);
+  color: var(--muted);
+  cursor: not-allowed;
 }
 
 .label {
   display: block;
-  font-size: 0.8rem;
+  font-size: 0.78rem;
   font-weight: 600;
   color: var(--muted);
-  margin-bottom: 0.25rem;
+  letter-spacing: 0.01em;
+  margin-bottom: 0.3rem;
 }

@@ -4,8 +4,8 @@
   "description": "Multi-species farm management: stock, sales, purchases, medical records.",
   "start_url": "/dashboard",
   "display": "standalone",
-  "background_color": "#f7f5f0",
-  "theme_color": "#2f6d3c",
+  "background_color": "#f7f6f0",
+  "theme_color": "#1b6e4a",
   "icons": [
     { "src": "/icon.svg", "sizes": "any", "type": "image/svg+xml" }
   ]

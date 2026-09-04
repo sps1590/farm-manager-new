@@ -6,6 +6,7 @@ import { useSearchParams } from "next/navigation";
 import RegisterForm from "@/components/forms/RegisterForm";
 import { t } from "@/lib/i18n";
 import type { Language } from "@/lib/types";
+import Logo from "@/components/Logo";
 
 // useSearchParams() must sit below a Suspense boundary or `next build` fails
 // to prerender the route -- isolate it in its own child so the language
@@ -30,12 +31,7 @@ export default function RegisterPage() {
     <div className="flex flex-1 items-center justify-center bg-background px-4 py-12">
       <div className="w-full max-w-sm">
         <div className="mb-6 flex items-center justify-between">
-          <div className="flex items-center gap-2">
-            <span className="text-2xl">🌾</span>
-            <span className="text-lg font-bold text-foreground">
-              {t(lang, "login.subtitle")}
-            </span>
-          </div>
+          <Logo withLabel label={t(lang, "login.subtitle")} />
           <button
             type="button"
             onClick={() => setLang(lang === "bn" ? "en" : "bn")}

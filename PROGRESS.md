@@ -284,6 +284,16 @@ Database: Neon Postgres, provisioned through Vercel's Storage integration.
 
 ## Changelog
 
+- **2026-09-04** — UI/UX redesign: refined organic-green/warm-neutral color
+  palette (`globals.css` tokens), Inter + Noto Sans Bengali via
+  `next/font/google` replacing the system font stack, upgraded
+  `.card`/`.btn-primary`/`.btn-secondary`/`.input` with modern radii,
+  shadows, and focus rings. Sidebar rebuilt as a client component
+  (`src/components/Sidebar.tsx`) with Lucide icons, active-link
+  highlighting (`usePathname`), and a user-initial avatar; brand mark
+  extracted into `src/components/Logo.tsx` and reused on login/register.
+  Farm Profile's quick-link cards got matching icon treatment. Emoji used
+  for species/content stay as-is (data-driven, fits the organic theme).
 - **2026-09-04** — Dashboard now shows the farm name plus the signed-in
   user's name and position (Owner / Partner / Manager / Employee / any
   custom role text) right below it — new `roleLabel()` helper in `i18n.ts`,

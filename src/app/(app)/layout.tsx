@@ -1,36 +1,27 @@
 import { redirect } from "next/navigation";
-import Link from "next/link";
 import { getSessionUser } from "@/lib/auth";
 import { hasPermission } from "@/lib/permissions";
 import { logoutAction, toggleLanguageAction } from "@/lib/actions/auth";
-import { t, roleLabel } from "@/lib/i18n";
+import { t } from "@/lib/i18n";
+import Sidebar, { type SidebarNavItem } from "@/components/Sidebar";
 import type { Module } from "@/lib/types";
 
-const NAV_ITEMS: Array<{
-  href: string;
-  key: "nav.dashboard" | "nav.batches" | "nav.purchases" | "nav.sales" | "nav.medical";
-  icon: string;
-  module?: Module;
-}> = [
-  { href: "/dashboard", key: "nav.dashboard", icon: "📊" },
-  { href: "/batches", key: "nav.batches", icon: "🐾", module: "batches" },
-  { href: "/purchases", key: "nav.purchases", icon: "🛒", module: "purchases" },
-  { href: "/sales", key: "nav.sales", icon: "💰", module: "sales" },
-  { href: "/medical", key: "nav.medical", icon: "💉", module: "medical" },
+const NAV_ITEMS: Array<SidebarNavItem & { module?: Module }> = [
+  { href: "/dashboard", labelKey: "nav.dashboard", icon: "dashboard" },
+  { href: "/batches", labelKey: "nav.batches", icon: "batches", module: "batches" },
+  { href: "/purchases", labelKey: "nav.purchases", icon: "purchases", module: "purchases" },
+  { href: "/sales", labelKey: "nav.sales", icon: "sales", module: "sales" },
+  { href: "/medical", labelKey: "nav.medical", icon: "medical", module: "medical" },
 ];
 
 // Owner-only, not part of the configurable permission matrix -- financial
 // and personal-compensation data, same reasoning as Team/Partners.
-const OWNER_NAV_ITEMS: Array<{
-  href: string;
-  key: "nav.team" | "nav.partners" | "nav.employees" | "nav.reports" | "nav.farmProfile";
-  icon: string;
-}> = [
-  { href: "/team", key: "nav.team", icon: "👥" },
-  { href: "/partners", key: "nav.partners", icon: "🤝" },
-  { href: "/employees", key: "nav.employees", icon: "🧑‍🌾" },
-  { href: "/reports", key: "nav.reports", icon: "📈" },
-  { href: "/farm", key: "nav.farmProfile", icon: "🏡" },
+const OWNER_NAV_ITEMS: SidebarNavItem[] = [
+  { href: "/team", labelKey: "nav.team", icon: "team" },
+  { href: "/partners", labelKey: "nav.partners", icon: "partners" },
+  { href: "/employees", labelKey: "nav.employees", icon: "employees" },
+  { href: "/reports", labelKey: "nav.reports", icon: "reports" },
+  { href: "/farm", labelKey: "nav.farmProfile", icon: "farmProfile" },
 ];
 
 export default async function AppLayout({
@@ -47,64 +38,18 @@ export default async function AppLayout({
 
   return (
     <div className="flex min-h-screen flex-1 flex-col md:flex-row">
-      <aside className="flex shrink-0 flex-col border-b border-border bg-surface md:w-56 md:border-b-0 md:border-r">
-        <div className="flex items-center gap-2 px-4 py-4">
-          <span className="text-2xl">🌾</span>
-          <span className="font-bold text-foreground">{t(lang, "app.name")}</span>
-        </div>
-        <nav className="flex flex-1 flex-row overflow-x-auto px-2 md:flex-col md:overflow-visible">
-          {visibleNavItems.map((item) => (
-            <Link
-              key={item.href}
-              href={item.href}
-              className="flex shrink-0 items-center gap-2 rounded-lg px-3 py-2 text-sm font-medium text-foreground hover:bg-background"
-            >
-              <span>{item.icon}</span>
-              <span>{t(lang, item.key)}</span>
-            </Link>
-          ))}
-          {user.role === "owner" &&
-            OWNER_NAV_ITEMS.map((item) => (
-              <Link
-                key={item.href}
-                href={item.href}
-                className="flex shrink-0 items-center gap-2 rounded-lg px-3 py-2 text-sm font-medium text-foreground hover:bg-background"
-              >
-                <span>{item.icon}</span>
-                <span>{t(lang, item.key)}</span>
-              </Link>
-            ))}
-          {user.role !== "owner" && user.is_partner && (
-            <Link
-              href="/partners"
-              className="flex shrink-0 items-center gap-2 rounded-lg px-3 py-2 text-sm font-medium text-foreground hover:bg-background"
-            >
-              <span>🤝</span>
-              <span>{t(lang, "nav.partners")}</span>
-            </Link>
-          )}
-        </nav>
-        <div className="flex items-center justify-between gap-2 border-t border-border px-4 py-3">
-          <div className="min-w-0">
-            <p className="truncate text-sm font-semibold text-foreground">
-              {user.name}
-            </p>
-            <p className="truncate text-xs text-muted capitalize">
-              {roleLabel(user.role, lang)}
-            </p>
-          </div>
-          <form action={toggleLanguageAction}>
-            <button type="submit" className="btn-secondary text-xs px-2 py-1">
-              {lang === "bn" ? "EN" : "বাং"}
-            </button>
-          </form>
-        </div>
-        <form action={logoutAction} className="px-4 pb-4">
-          <button type="submit" className="btn-secondary w-full text-xs">
-            {t(lang, "nav.logout")}
-          </button>
-        </form>
-      </aside>
+      <Sidebar
+        lang={lang}
+        appName={t(lang, "app.name")}
+        navItems={visibleNavItems}
+        ownerNavItems={OWNER_NAV_ITEMS}
+        showOwnerNav={user.role === "owner"}
+        showPartnerLink={user.role !== "owner" && user.is_partner}
+        userName={user.name}
+        userRole={user.role}
+        logoutAction={logoutAction}
+        toggleLanguageAction={toggleLanguageAction}
+      />
       <main className="flex-1 bg-background px-4 py-6 md:px-8 md:py-8">
         {children}
       </main>

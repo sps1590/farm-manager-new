@@ -1,5 +1,19 @@
 import type { Metadata, Viewport } from "next";
+import { Inter, Noto_Sans_Bengali } from "next/font/google";
 import "./globals.css";
+
+const inter = Inter({
+  subsets: ["latin"],
+  variable: "--font-inter",
+  display: "swap",
+});
+
+const notoSansBengali = Noto_Sans_Bengali({
+  subsets: ["bengali"],
+  weight: ["400", "500", "600", "700"],
+  variable: "--font-noto-bengali",
+  display: "swap",
+});
 
 export const metadata: Metadata = {
   title: "Farm Manager",
@@ -13,14 +27,17 @@ export const metadata: Metadata = {
 };
 
 export const viewport: Viewport = {
-  themeColor: "#2f6d3c",
+  themeColor: "#1b6e4a",
   width: "device-width",
   initialScale: 1,
 };
 
 export default function RootLayout({ children }: LayoutProps<"/">) {
   return (
-    <html lang="en" className="h-full antialiased">
+    <html
+      lang="en"
+      className={`h-full antialiased ${inter.variable} ${notoSansBengali.variable}`}
+    >
       <body className="min-h-full flex flex-col">{children}</body>
     </html>
   );

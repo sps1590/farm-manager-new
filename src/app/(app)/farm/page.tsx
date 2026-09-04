@@ -1,8 +1,16 @@
 import Link from "next/link";
+import { Users, Handshake, UserCog, LineChart, type LucideIcon } from "lucide-react";
 import { requireOwner } from "@/lib/permissions";
 import { getFarm, listSpecies, getEnabledSpeciesIds } from "@/lib/repo";
 import { updateFarmDetailsAction, setEnabledSpeciesAction } from "@/lib/actions/farm";
-import { t } from "@/lib/i18n";
+import { t, type DictKey } from "@/lib/i18n";
+
+const SETUP_LINKS: Array<{ href: string; labelKey: DictKey; icon: LucideIcon }> = [
+  { href: "/team", labelKey: "nav.team", icon: Users },
+  { href: "/partners", labelKey: "nav.partners", icon: Handshake },
+  { href: "/employees", labelKey: "nav.employees", icon: UserCog },
+  { href: "/reports", labelKey: "nav.reports", icon: LineChart },
+];
 
 export default async function FarmProfilePage() {
   const owner = await requireOwner();
@@ -96,18 +104,18 @@ export default async function FarmProfilePage() {
       <div>
         <h2 className="mb-2 font-semibold text-foreground">{t(lang, "farm.setup")}</h2>
         <div className="grid grid-cols-2 gap-4 sm:grid-cols-4">
-          <Link href="/team" className="card p-4 hover:bg-background">
-            <p className="font-semibold text-foreground">👥 {t(lang, "nav.team")}</p>
-          </Link>
-          <Link href="/partners" className="card p-4 hover:bg-background">
-            <p className="font-semibold text-foreground">🤝 {t(lang, "nav.partners")}</p>
-          </Link>
-          <Link href="/employees" className="card p-4 hover:bg-background">
-            <p className="font-semibold text-foreground">🧑‍🌾 {t(lang, "nav.employees")}</p>
-          </Link>
-          <Link href="/reports" className="card p-4 hover:bg-background">
-            <p className="font-semibold text-foreground">📈 {t(lang, "nav.reports")}</p>
-          </Link>
+          {SETUP_LINKS.map(({ href, labelKey, icon: Icon }) => (
+            <Link
+              key={href}
+              href={href}
+              className="card flex items-center gap-3 p-4 transition-colors hover:bg-surface-hover"
+            >
+              <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-primary/10 text-primary">
+                <Icon size={18} />
+              </div>
+              <p className="font-semibold text-foreground">{t(lang, labelKey)}</p>
+            </Link>
+          ))}
         </div>
       </div>
     </div>

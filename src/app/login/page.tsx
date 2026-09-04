@@ -5,6 +5,7 @@ import { useActionState, useState } from "react";
 import { loginAction, type LoginState } from "@/lib/actions/auth";
 import { t, type DictKey } from "@/lib/i18n";
 import type { Language } from "@/lib/types";
+import Logo from "@/components/Logo";
 
 const initialState: LoginState = {};
 
@@ -19,12 +20,7 @@ export default function LoginPage() {
     <div className="flex flex-1 items-center justify-center bg-background px-4 py-12">
       <div className="w-full max-w-sm">
         <div className="mb-6 flex items-center justify-between">
-          <div className="flex items-center gap-2">
-            <span className="text-2xl">🌾</span>
-            <span className="text-lg font-bold text-foreground">
-              {t(lang, "login.subtitle")}
-            </span>
-          </div>
+          <Logo withLabel label={t(lang, "login.subtitle")} />
           <button
             type="button"
             onClick={() => setLang(lang === "bn" ? "en" : "bn")}
@@ -34,7 +30,7 @@ export default function LoginPage() {
           </button>
         </div>
 
-        <div className="card p-6 shadow-sm">
+        <div className="card p-6">
           <h1 className="mb-4 text-xl font-bold text-foreground">
             {t(lang, "login.title")}
           </h1>
