@@ -13,6 +13,7 @@ import {
   UserCog,
   LineChart,
   Sprout,
+  Scale,
   LogOut,
   type LucideIcon,
 } from "lucide-react";
@@ -30,6 +31,7 @@ export type NavIconKey =
   | "partners"
   | "employees"
   | "reports"
+  | "ledger"
   | "farmProfile";
 
 const ICONS: Record<NavIconKey, LucideIcon> = {
@@ -42,6 +44,7 @@ const ICONS: Record<NavIconKey, LucideIcon> = {
   partners: Handshake,
   employees: UserCog,
   reports: LineChart,
+  ledger: Scale,
   farmProfile: Sprout,
 };
 

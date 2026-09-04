@@ -393,6 +393,65 @@ export async function getExpenseBreakdown(
   );
 }
 
+export interface LedgerEntry {
+  date: string;
+  type: "income" | "expense";
+  itemName: string;
+  category: string | null;
+  speciesId: number | null;
+  amount: number;
+}
+
+// Combined, date-sorted income (sales) + expense (purchases) ledger for the
+// Profit/Loss table page. Category is a purchase category for expenses;
+// income rows carry speciesId instead so the page can show the species
+// icon/name (sales don't have a category field).
+export async function listLedgerEntries(
+  farmId: number,
+  range?: DateRange
+): Promise<LedgerEntry[]> {
+  const db = await getDb();
+  const from = range?.from ?? "0001-01-01";
+  const to = range?.to ?? "9999-12-31";
+
+  const [salesRows, purchaseRows] = await Promise.all([
+    db`
+      SELECT sale_date as date, item_name, species_id, total_amount as amount
+      FROM sales
+      WHERE farm_id = ${farmId} AND sale_date >= ${from} AND sale_date <= ${to}
+      ORDER BY sale_date DESC, id DESC
+    `,
+    db`
+      SELECT purchase_date as date, item_name, category, species_id, total_amount as amount
+      FROM purchases
+      WHERE farm_id = ${farmId} AND purchase_date >= ${from} AND purchase_date <= ${to}
+      ORDER BY purchase_date DESC, id DESC
+    `,
+  ]);
+
+  const entries: LedgerEntry[] = [
+    ...salesRows.map((r) => ({
+      date: String(r.date),
+      type: "income" as const,
+      itemName: String(r.item_name),
+      category: null,
+      speciesId: r.species_id == null ? null : Number(r.species_id),
+      amount: Number(r.amount),
+    })),
+    ...purchaseRows.map((r) => ({
+      date: String(r.date),
+      type: "expense" as const,
+      itemName: String(r.item_name),
+      category: String(r.category),
+      speciesId: r.species_id == null ? null : Number(r.species_id),
+      amount: Number(r.amount),
+    })),
+  ];
+
+  entries.sort((a, b) => (a.date < b.date ? 1 : a.date > b.date ? -1 : 0));
+  return entries;
+}
+
 interface RawPartnerRow {
   id: number;
   name: string;
@@ -416,7 +475,8 @@ interface RawPartnerRow {
 // ledger stays intact and visible; they just show 0% while inactive.
 async function fetchPartnerSummaries(
   db: Awaited<ReturnType<typeof getDb>>,
-  farmId: number
+  farmId: number,
+  range?: DateRange
 ): Promise<PartnerSummary[]> {
   const rows = (await db`
     SELECT u.id, u.name, u.email, u.phone, u.profit_share_percent, u.profit_share_auto, u.partner_status,
@@ -432,12 +492,15 @@ async function fetchPartnerSummaries(
     .filter((r) => r.partner_status === "active")
     .reduce((sum, r) => sum + Math.max(0, Number(r.net_investment)), 0);
 
-  // Profit share Amount is derived from the farm's all-time Net Profit (see
-  // getFinancialSummary) and reserve % -- same figures for every partner in
-  // this farm, so fetch once rather than per row.
+  // Profit share Amount is derived from Net Profit (see getFinancialSummary)
+  // and reserve % -- same figures for every partner in this farm, so fetch
+  // once rather than per row. No range = all-time (listPartners/getPartner);
+  // listPartnerProfitLoss passes an explicit range for the ledger page, but
+  // ownership % above is always all-time regardless -- it's a function of
+  // cumulative investment, not any one period's results.
   const [farm, financials] = await Promise.all([
     getFarm(farmId),
-    getFinancialSummary(farmId),
+    getFinancialSummary(farmId, range),
   ]);
   const reservePercent = farm?.profit_reserve_percent ?? 0;
   const distributablePool =
@@ -474,6 +537,17 @@ async function fetchPartnerSummaries(
 export async function listPartners(farmId: number): Promise<PartnerSummary[]> {
   const db = await getDb();
   return fetchPartnerSummaries(db, farmId);
+}
+
+// Same per-partner split as listPartners, but the profit-share Amount is
+// computed from the given period's Net Profit instead of all-time -- used
+// by the Profit/Loss table page's date-range filter.
+export async function listPartnerProfitLoss(
+  farmId: number,
+  range?: DateRange
+): Promise<PartnerSummary[]> {
+  const db = await getDb();
+  return fetchPartnerSummaries(db, farmId, range);
 }
 
 export async function getPartner(

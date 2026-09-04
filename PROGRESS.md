@@ -222,6 +222,15 @@ can register and use the same deployment, each with their own team and data.
   `src/lib/repo.ts`. The all-time (no range) call from this same function
   is what feeds the Partnership profit-share Amount above.
 
+**Profit/Loss table** (done 2026-09-04)
+- `/ledger` (owner-only, nav label "Profit / Loss table"): same date-range
+  filter pattern as `/reports`, plus (1) a chronological income/expense
+  ledger merging every Sale and Purchase in range (`listLedgerEntries()`)
+  and (2) a per-partner profit/loss table for that same range
+  (`listPartnerProfitLoss()`). Ownership % in that table is still all-time
+  (cumulative investment); only the ৳ profit/loss amount is period-scoped —
+  `/partners` and `/reports` themselves are untouched and stay all-time.
+
 ## What's NOT built yet — future phases
 
 **Phase 2 — people and money** (done as of 2026-09-02 — see HR and
@@ -284,6 +293,14 @@ Database: Neon Postgres, provisioned through Vercel's Storage integration.
 
 ## Changelog
 
+- **2026-09-04** — New owner-only "Profit / Loss table" page (`/ledger`,
+  `nav.ledger`): a date-range-filterable income/expense ledger (every sale
+  and purchase, chronological, `listLedgerEntries()`) plus a per-partner
+  profit/loss table for that same period (`listPartnerProfitLoss()` — reuses
+  `fetchPartnerSummaries()` with an optional `range`, so ownership % stays
+  all-time-based while the ৳ profit/loss amount reflects only the selected
+  dates). Existing `/partners` and `/reports` pages are unchanged (still
+  always all-time for partner amounts, per the documented design decision).
 - **2026-09-04** — Total amount on the New sale/purchase forms now
   auto-calculates from Quantity x Unit price (`useAutoTotal` hook,
   `src/hooks/useAutoTotal.ts`); still a normal editable field for manual

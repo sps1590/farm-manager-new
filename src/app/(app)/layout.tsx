@@ -21,6 +21,7 @@ const OWNER_NAV_ITEMS: SidebarNavItem[] = [
   { href: "/partners", labelKey: "nav.partners", icon: "partners" },
   { href: "/employees", labelKey: "nav.employees", icon: "employees" },
   { href: "/reports", labelKey: "nav.reports", icon: "reports" },
+  { href: "/ledger", labelKey: "nav.ledger", icon: "ledger" },
   { href: "/farm", labelKey: "nav.farmProfile", icon: "farmProfile" },
 ];
 
