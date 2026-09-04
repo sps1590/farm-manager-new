@@ -284,6 +284,11 @@ Database: Neon Postgres, provisioned through Vercel's Storage integration.
 
 ## Changelog
 
+- **2026-09-04** — New sale form now offers a species-specific "Product
+  type" preset (Cow → Cow/Milk/Calf; Chicken/Duck/Pigeon-Quail → the bird
+  (meat)/Egg) that fills in the Item field, with a "Custom / other" option
+  that leaves it free text as before. Species without a preset list (fish,
+  vegetable) are unaffected. `NewSaleForm.tsx`, keyed off `species.key`.
 - **2026-09-04** — UI/UX redesign: refined organic-green/warm-neutral color
   palette (`globals.css` tokens), Inter + Noto Sans Bengali via
   `next/font/google` replacing the system font stack, upgraded
