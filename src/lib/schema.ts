@@ -380,4 +380,33 @@ export const SCHEMA_STATEMENTS: string[] = [
   `CREATE INDEX IF NOT EXISTS idx_tasks_farm ON tasks(farm_id)`,
   `CREATE INDEX IF NOT EXISTS idx_tasks_due ON tasks(due_date)`,
   `CREATE INDEX IF NOT EXISTS idx_tasks_assigned ON tasks(assigned_to)`,
+
+  // Tier 2: production recording (milk/egg/weight etc), a daily log
+  // distinct from Sales -- deliberately not linked to batches.current_quantity
+  // or sales, same kind of documented deferral as attendance not yet
+  // feeding payroll. product_type is plain text (a small stable set:
+  // milk/egg/weight, or free text for "other"), resolved for display via
+  // productionTypeLabel() in src/lib/labels.ts.
+  `CREATE TABLE IF NOT EXISTS production_records (
+    id SERIAL PRIMARY KEY,
+    farm_id INTEGER NOT NULL REFERENCES farms(id) ON DELETE CASCADE,
+    species_id INTEGER REFERENCES species(id),
+    batch_id INTEGER REFERENCES batches(id),
+    product_type TEXT NOT NULL,
+    record_date TEXT NOT NULL,
+    quantity DOUBLE PRECISION NOT NULL,
+    unit TEXT,
+    notes TEXT,
+    created_by INTEGER REFERENCES users(id),
+    created_at TEXT NOT NULL DEFAULT ${NOW_TEXT}
+  )`,
+  `CREATE INDEX IF NOT EXISTS idx_production_farm ON production_records(farm_id)`,
+  `CREATE INDEX IF NOT EXISTS idx_production_date ON production_records(record_date)`,
+  `CREATE INDEX IF NOT EXISTS idx_production_batch ON production_records(batch_id)`,
+
+  // Extend the permission-matrix module CHECK to admit the new "production"
+  // module (same idempotent-migration pattern used when purchases.category
+  // moved off a fixed CHECK in Tier 1).
+  `ALTER TABLE user_permissions DROP CONSTRAINT IF EXISTS user_permissions_module_check`,
+  `ALTER TABLE user_permissions ADD CONSTRAINT user_permissions_module_check CHECK (module IN ('batches','purchases','sales','medical','production'))`,
 ];

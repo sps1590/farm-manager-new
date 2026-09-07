@@ -12,6 +12,7 @@ const NAV_ITEMS: Array<SidebarNavItem & { module?: Module }> = [
   { href: "/purchases", labelKey: "nav.purchases", icon: "purchases", module: "purchases" },
   { href: "/sales", labelKey: "nav.sales", icon: "sales", module: "sales" },
   { href: "/medical", labelKey: "nav.medical", icon: "medical", module: "medical" },
+  { href: "/production", labelKey: "nav.production", icon: "production", module: "production" },
   // No `module` -- Tasks isn't part of the configurable permission matrix
   // (see src/lib/actions/tasks.ts), so it's visible to every team member.
   { href: "/tasks", labelKey: "nav.tasks", icon: "tasks" },

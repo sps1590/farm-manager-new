@@ -8,8 +8,8 @@ export type RolePreset = "owner" | "manager" | "employee";
 
 export type Language = "en" | "bn";
 
-export type Module = "batches" | "purchases" | "sales" | "medical";
-export const MODULES: Module[] = ["batches", "purchases", "sales", "medical"];
+export type Module = "batches" | "purchases" | "sales" | "medical" | "production";
+export const MODULES: Module[] = ["batches", "purchases", "sales", "medical", "production"];
 export type PermAction = "view" | "create" | "edit" | "delete";
 export type ModulePermissions = Record<PermAction, boolean>;
 export type PermissionsMap = Record<Module, ModulePermissions>;
@@ -20,6 +20,7 @@ export function emptyPermissions(): PermissionsMap {
     purchases: { view: false, create: false, edit: false, delete: false },
     sales: { view: false, create: false, edit: false, delete: false },
     medical: { view: false, create: false, edit: false, delete: false },
+    production: { view: false, create: false, edit: false, delete: false },
   };
 }
 
@@ -291,6 +292,19 @@ export interface TaskRow {
   recurrence: TaskRecurrence;
   status: TaskStatus;
   completed_at: string | null;
+  created_by: number | null;
+  created_at: string;
+}
+
+export interface ProductionRecordRow {
+  id: number;
+  species_id: number | null;
+  batch_id: number | null;
+  product_type: string;
+  record_date: string;
+  quantity: number;
+  unit: string | null;
+  notes: string | null;
   created_by: number | null;
   created_at: string;
 }

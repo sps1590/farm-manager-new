@@ -21,6 +21,7 @@ const MODULE_LABEL_KEYS: Record<Module, DictKey> = {
   purchases: "nav.purchases",
   sales: "nav.sales",
   medical: "nav.medical",
+  production: "nav.production",
 };
 
 export default function TeamMemberForm({

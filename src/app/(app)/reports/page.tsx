@@ -1,9 +1,14 @@
 import Link from "next/link";
 import { requireOwner } from "@/lib/permissions";
-import { getFinancialSummary, getExpenseBreakdown, listExpenseCategories } from "@/lib/repo";
+import {
+  getFinancialSummary,
+  getExpenseBreakdown,
+  listExpenseCategories,
+  getProductionSummary,
+} from "@/lib/repo";
 import { t } from "@/lib/i18n";
-import { categoryLabel } from "@/lib/labels";
-import { formatCurrency } from "@/lib/format";
+import { categoryLabel, productionTypeLabel } from "@/lib/labels";
+import { formatCurrency, formatQuantity } from "@/lib/format";
 
 export default async function ReportsPage({
   searchParams,
@@ -15,10 +20,11 @@ export default async function ReportsPage({
   const { from, to } = await searchParams;
   const range = from || to ? { from, to } : undefined;
 
-  const [summary, breakdown, categories] = await Promise.all([
+  const [summary, breakdown, categories, production] = await Promise.all([
     getFinancialSummary(owner.farm_id, range),
     getExpenseBreakdown(owner.farm_id, range),
     listExpenseCategories(owner.farm_id),
+    getProductionSummary(owner.farm_id, range),
   ]);
 
   return (
@@ -112,6 +118,36 @@ export default async function ReportsPage({
                     <td className="px-4 py-2 text-right font-medium">
                       {t(lang, "common.currency")}
                       {formatCurrency(b.total)}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
+      </div>
+
+      <div>
+        <h2 className="mb-2 font-semibold text-foreground">
+          {t(lang, "production.summary")}
+        </h2>
+        {production.length === 0 ? (
+          <p className="text-sm text-muted">{t(lang, "production.noRecords")}</p>
+        ) : (
+          <div className="card overflow-x-auto">
+            <table className="w-full min-w-[320px] text-sm">
+              <thead>
+                <tr className="border-b border-border text-left text-muted">
+                  <th className="px-4 py-2 font-medium">{t(lang, "production.productType")}</th>
+                  <th className="px-4 py-2 font-medium text-right">{t(lang, "common.quantity")}</th>
+                </tr>
+              </thead>
+              <tbody>
+                {production.map((p) => (
+                  <tr key={p.product_type} className="border-b border-border last:border-0">
+                    <td className="px-4 py-2">{productionTypeLabel(p.product_type, lang)}</td>
+                    <td className="px-4 py-2 text-right font-medium">
+                      {formatQuantity(p.total)}
                     </td>
                   </tr>
                 ))}

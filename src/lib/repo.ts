@@ -19,6 +19,7 @@ import {
   type PurchaseRow,
   type SaleRow,
   type SalaryPaymentRow,
+  type ProductionRecordRow,
   type SpeciesRow,
   type TaskRow,
   type TaskStatus,
@@ -444,6 +445,45 @@ export async function getExpenseBreakdown(
       FROM purchases
       WHERE farm_id = ${farmId} AND purchase_date >= ${from} AND purchase_date <= ${to}
       GROUP BY category
+      ORDER BY total DESC
+    `
+  );
+}
+
+export async function listProductionRecords(
+  farmId: number,
+  range?: DateRange
+): Promise<ProductionRecordRow[]> {
+  const db = await getDb();
+  const from = range?.from ?? "0001-01-01";
+  const to = range?.to ?? "9999-12-31";
+  return plainRows<ProductionRecordRow>(
+    await db`
+      SELECT * FROM production_records
+      WHERE farm_id = ${farmId} AND record_date >= ${from} AND record_date <= ${to}
+      ORDER BY record_date DESC, id DESC
+    `
+  );
+}
+
+export interface ProductionTypeTotal {
+  product_type: string;
+  total: number;
+}
+
+export async function getProductionSummary(
+  farmId: number,
+  range?: DateRange
+): Promise<ProductionTypeTotal[]> {
+  const db = await getDb();
+  const from = range?.from ?? "0001-01-01";
+  const to = range?.to ?? "9999-12-31";
+  return plainRows<ProductionTypeTotal>(
+    await db`
+      SELECT product_type, COALESCE(SUM(quantity),0) as total
+      FROM production_records
+      WHERE farm_id = ${farmId} AND record_date >= ${from} AND record_date <= ${to}
+      GROUP BY product_type
       ORDER BY total DESC
     `
   );

@@ -321,6 +321,28 @@ from the iFARM ToR gap-analysis Tier 2, picked by the owner)
   every such task; anyone else sees only tasks assigned to them
   (`listUpcomingTasks()` in `src/lib/repo.ts`).
 
+**Production recording** (done 2026-09-07, Tier 2 item 2)
+- `/production`: a daily production log (milk, eggs, weight checks) kept
+  deliberately separate from Sales — a day's egg count is recorded here
+  whether or not (or before) it's sold, rather than only ever showing up
+  as a generic sale line item. Species-aware product-type presets
+  (`NewProductionForm.tsx`, mirrors the sale form's pattern) with a
+  custom/other toggle for anything else. Date-range filterable, same
+  pattern as `/reports`.
+- **New permission-matrix module** `production`, added the same way
+  batches/purchases/sales/medical already work: `Module`/`MODULES`/
+  `emptyPermissions()` in `src/lib/types.ts`, the `user_permissions.module`
+  CHECK constraint extended in `src/lib/schema.ts`, and a `production` row
+  in `TeamMemberForm.tsx`'s permission grid — the grid itself and
+  `savePermissions()` already iterate `MODULES` generically, so nothing
+  else needed updating.
+- Reports page gained an additive "Production summary" section (totals by
+  product type for the selected range, `getProductionSummary()`).
+- **Explicitly out of scope for this pass**: no link to Sales or
+  `batches.current_quantity` — recording production doesn't touch stock or
+  create a sale, a deliberate deferral matching how attendance doesn't yet
+  feed payroll cost.
+
 ## What's NOT built yet — future phases
 
 **Phase 2 — people and money** (done as of 2026-09-02 — see HR and
@@ -383,6 +405,11 @@ Database: Neon Postgres, provisioned through Vercel's Storage integration.
 
 ## Changelog
 
+- **2026-09-07** — Tier 2, item 2: production recording. New `/production`
+  module (daily milk/egg/weight log, independent of Sales) with a new
+  fifth permission-matrix module (`production`) alongside batches/
+  purchases/sales/medical. Reports page gained a production-summary
+  section.
 - **2026-09-07** — Tier 2, item 1: task & reminder engine. New `/tasks`
   module (visible to all team members) generalizes the vaccination
   due-date pattern into assignable, trackable, optionally-recurring jobs.
