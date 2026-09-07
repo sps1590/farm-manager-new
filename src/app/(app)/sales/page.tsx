@@ -9,8 +9,10 @@ import { formatCurrency } from "@/lib/format";
 export default async function SalesPage() {
   const user = await requirePermission("sales", "view");
   const lang = user.language;
-  const sales = await listSales(user.farm_id);
-  const species = await listSpecies();
+  const [sales, species] = await Promise.all([
+    listSales(user.farm_id),
+    listSpecies(),
+  ]);
   const speciesById = Object.fromEntries(species.map((s) => [s.id, s]));
   const canCreate = hasPermission(user, "sales", "create");
   const canDelete = hasPermission(user, "sales", "delete");

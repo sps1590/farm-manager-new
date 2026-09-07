@@ -22,9 +22,11 @@ export default async function EmployeeDetailPage({
   const owner = await requireOwner();
   const lang = owner.language;
 
-  const employee = await getEmployee(employeeId, owner.farm_id);
+  const [employee, payments] = await Promise.all([
+    getEmployee(employeeId, owner.farm_id),
+    listSalaryPayments(employeeId, owner.farm_id),
+  ]);
   if (!employee) notFound();
-  const payments = await listSalaryPayments(employeeId, owner.farm_id);
 
   return (
     <div className="space-y-6">

@@ -293,6 +293,15 @@ Database: Neon Postgres, provisioned through Vercel's Storage integration.
 
 ## Changelog
 
+- **2026-09-07** — Stability pass (Phase 0 of the Tier 1 build plan — the
+  app is now live on a real farm, so correctness and speed came first).
+  Fixed a real data-integrity bug: deleting a sale or an "animal" purchase
+  never reversed the batch-stock change its creation made, so the batch's
+  `current_quantity` could drift from reality (`deleteSaleAction`,
+  `deletePurchaseAction` in `src/lib/actions/sales.ts`/`purchases.ts`).
+  Parallelized independent reads with `Promise.all` across the dashboard
+  and every list/detail page that was awaiting unrelated queries
+  sequentially, cutting page-load round trips with no behavior change.
 - **2026-09-04** — New owner-only "Profit / Loss table" page (`/ledger`,
   `nav.ledger`): a date-range-filterable income/expense ledger (every sale
   and purchase, chronological, `listLedgerEntries()`) plus a per-partner

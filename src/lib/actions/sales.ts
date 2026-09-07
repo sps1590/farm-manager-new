@@ -70,7 +70,25 @@ export async function deleteSaleAction(formData: FormData) {
   const user = await requirePermission("sales", "delete");
   const db = await getDb();
   const id = Number(formData.get("id"));
+
+  const rows = await db`
+    SELECT batch_id, quantity FROM sales WHERE id = ${id} AND farm_id = ${user.farm_id}
+  `;
+  const sale = rows[0] as { batch_id: number | null; quantity: number | null } | undefined;
+
   await db`DELETE FROM sales WHERE id = ${id} AND farm_id = ${user.farm_id}`;
+
+  // A sale decreased the linked batch's stock on create -- deleting it
+  // must restore that stock, or the batch count silently drifts.
+  if (sale?.batch_id && sale.quantity) {
+    await db`
+      UPDATE batches
+      SET current_quantity = current_quantity + ${sale.quantity}, updated_at = to_char(now(), 'YYYY-MM-DD HH24:MI:SS')
+      WHERE id = ${sale.batch_id} AND farm_id = ${user.farm_id}
+    `;
+  }
+
   revalidatePath("/sales");
   revalidatePath("/dashboard");
+  revalidatePath("/batches");
 }

@@ -82,7 +82,27 @@ export async function deletePurchaseAction(formData: FormData) {
   const user = await requirePermission("purchases", "delete");
   const db = await getDb();
   const id = Number(formData.get("id"));
+
+  const rows = await db`
+    SELECT batch_id, quantity, category FROM purchases WHERE id = ${id} AND farm_id = ${user.farm_id}
+  `;
+  const purchase = rows[0] as
+    | { batch_id: number | null; quantity: number | null; category: string }
+    | undefined;
+
   await db`DELETE FROM purchases WHERE id = ${id} AND farm_id = ${user.farm_id}`;
+
+  // An "animal" purchase increased the linked batch's stock on create --
+  // deleting it must reverse that, or the batch count silently drifts.
+  if (purchase?.category === "animal" && purchase.batch_id && purchase.quantity) {
+    await db`
+      UPDATE batches
+      SET current_quantity = GREATEST(0, current_quantity - ${purchase.quantity}), updated_at = to_char(now(), 'YYYY-MM-DD HH24:MI:SS')
+      WHERE id = ${purchase.batch_id} AND farm_id = ${user.farm_id}
+    `;
+  }
+
   revalidatePath("/purchases");
   revalidatePath("/dashboard");
+  revalidatePath("/batches");
 }

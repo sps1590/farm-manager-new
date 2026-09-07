@@ -27,10 +27,12 @@ export default async function BatchDetailPage({
 
   const batch = await getBatch(batchId, user.farm_id);
   if (!batch) notFound();
-  const species = await getSpecies(batch.species_id);
-  const purchases = await listPurchasesByBatch(batchId, user.farm_id);
-  const sales = await listSalesByBatch(batchId, user.farm_id);
-  const medical = await listMedicalByBatch(batchId, user.farm_id);
+  const [species, purchases, sales, medical] = await Promise.all([
+    getSpecies(batch.species_id),
+    listPurchasesByBatch(batchId, user.farm_id),
+    listSalesByBatch(batchId, user.farm_id),
+    listMedicalByBatch(batchId, user.farm_id),
+  ]);
 
   return (
     <div className="space-y-6">

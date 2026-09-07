@@ -24,9 +24,11 @@ export default async function PartnerDetailPage({
   const lang = user.language;
   const isOwner = user.role === "owner";
 
-  const partner = await getPartner(partnerId, user.farm_id);
+  const [partner, entries] = await Promise.all([
+    getPartner(partnerId, user.farm_id),
+    listPartnerEntries(partnerId, user.farm_id),
+  ]);
   if (!partner) notFound();
-  const entries = await listPartnerEntries(partnerId, user.farm_id);
 
   return (
     <div className="space-y-6">

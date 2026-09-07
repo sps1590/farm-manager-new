@@ -6,8 +6,10 @@ import NewMedicalForm from "@/components/forms/NewMedicalForm";
 export default async function NewMedicalPage() {
   const user = await requirePermission("medical", "create");
   const lang = user.language;
-  const species = await listEnabledSpecies(user.farm_id);
-  const batches = await listBatchesForSelect(user.farm_id);
+  const [species, batches] = await Promise.all([
+    listEnabledSpecies(user.farm_id),
+    listBatchesForSelect(user.farm_id),
+  ]);
 
   return (
     <div className="max-w-2xl space-y-6">

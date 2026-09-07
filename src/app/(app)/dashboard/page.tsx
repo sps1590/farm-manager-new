@@ -15,15 +15,17 @@ import { formatCurrency, formatQuantity } from "@/lib/format";
 export default async function DashboardPage() {
   const user = await requireUser();
   const lang = user.language;
-  const farm = await getFarm(user.farm_id);
-  const summary = await dashboardSummary(user.farm_id);
-  const upcoming = await listUpcomingMedical(user.farm_id, 14);
-  const activity = await recentActivity(user.farm_id, 8);
-  const speciesList = await listSpecies();
+  const [farm, summary, upcoming, activity, speciesList, ownerPartners, ownPartnership] =
+    await Promise.all([
+      getFarm(user.farm_id),
+      dashboardSummary(user.farm_id),
+      listUpcomingMedical(user.farm_id, 14),
+      recentActivity(user.farm_id, 8),
+      listSpecies(),
+      user.role === "owner" ? listPartners(user.farm_id) : Promise.resolve(null),
+      user.is_partner ? getPartner(user.id, user.farm_id) : Promise.resolve(null),
+    ]);
   const speciesById = Object.fromEntries(speciesList.map((s) => [s.id, s]));
-
-  const ownerPartners = user.role === "owner" ? await listPartners(user.farm_id) : null;
-  const ownPartnership = user.is_partner ? await getPartner(user.id, user.farm_id) : null;
 
   return (
     <div className="space-y-8">

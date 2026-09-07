@@ -6,8 +6,10 @@ import NewPurchaseForm from "@/components/forms/NewPurchaseForm";
 export default async function NewPurchasePage() {
   const user = await requirePermission("purchases", "create");
   const lang = user.language;
-  const species = await listEnabledSpecies(user.farm_id);
-  const batches = await listBatchesForSelect(user.farm_id);
+  const [species, batches] = await Promise.all([
+    listEnabledSpecies(user.farm_id),
+    listBatchesForSelect(user.farm_id),
+  ]);
 
   return (
     <div className="max-w-2xl space-y-6">

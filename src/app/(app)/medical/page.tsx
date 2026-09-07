@@ -8,8 +8,10 @@ import ConfirmForm from "@/components/forms/ConfirmForm";
 export default async function MedicalPage() {
   const user = await requirePermission("medical", "view");
   const lang = user.language;
-  const records = await listMedicalRecords(user.farm_id);
-  const species = await listSpecies();
+  const [records, species] = await Promise.all([
+    listMedicalRecords(user.farm_id),
+    listSpecies(),
+  ]);
   const speciesById = Object.fromEntries(species.map((s) => [s.id, s]));
   const canCreate = hasPermission(user, "medical", "create");
   const canDelete = hasPermission(user, "medical", "delete");

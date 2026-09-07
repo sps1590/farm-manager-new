@@ -6,8 +6,10 @@ import { t } from "@/lib/i18n";
 export default async function BatchesPage() {
   const user = await requirePermission("batches", "view");
   const lang = user.language;
-  const batches = await listBatches(user.farm_id);
-  const species = await listSpecies();
+  const [batches, species] = await Promise.all([
+    listBatches(user.farm_id),
+    listSpecies(),
+  ]);
   const speciesById = Object.fromEntries(species.map((s) => [s.id, s]));
   const canCreate = hasPermission(user, "batches", "create");
 
