@@ -440,6 +440,16 @@ period-locking/year-end close)
 
 ## What's NOT built yet — future phases
 
+**Tier 3, item 3 — native mobile apps: skipped for now** (owner's
+decision, 2026-09-08). This was always the odd one out in the Tier 3 set
+picked from the ToR gap-analysis — it isn't an addition to this codebase
+at all, but a separate project (React Native/Flutter, its own repo, app
+store developer accounts). Items 1 and 2 (breeding/incubation tracking,
+double-entry accounting ledger) shipped; this one is on hold. Revisit if
+the owner decides it's worth the separate undertaking — the existing PWA
+manifest (see "Smaller gaps" below) is the lower-cost middle ground
+already in place.
+
 **Phase 2 — people and money** (done as of 2026-09-02 — see HR and
 Automated P&L report above)
 
@@ -500,6 +510,8 @@ Database: Neon Postgres, provisioned through Vercel's Storage integration.
 
 ## Changelog
 
+- **2026-09-08** — Tier 3, item 3 (native mobile apps) skipped for now,
+  owner's decision — see "What's NOT built yet" below. No code change.
 - **2026-09-08** — Tier 3, item 2: double-entry accounting ledger. New
   `accounts`/`journal_entries`/`journal_lines` tables, auto-posting wired
   into Purchases, Sales, Salary Payments (on paid) and Partner
