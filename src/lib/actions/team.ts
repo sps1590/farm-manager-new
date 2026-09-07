@@ -26,11 +26,11 @@ async function savePermissions(
   userId: number,
   formData: FormData
 ) {
-  for (const module of MODULES) {
-    const perm = readPermissionInput(formData, module);
+  for (const mod of MODULES) {
+    const perm = readPermissionInput(formData, mod);
     await db`
       INSERT INTO user_permissions (user_id, module, can_view, can_create, can_edit, can_delete)
-      VALUES (${userId}, ${module}, ${perm.view}, ${perm.create}, ${perm.edit}, ${perm.delete})
+      VALUES (${userId}, ${mod}, ${perm.view}, ${perm.create}, ${perm.edit}, ${perm.delete})
       ON CONFLICT (user_id, module) DO UPDATE SET
         can_view = EXCLUDED.can_view,
         can_create = EXCLUDED.can_create,

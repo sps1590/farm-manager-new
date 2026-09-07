@@ -1,7 +1,13 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { requirePermission, hasPermission } from "@/lib/permissions";
-import { getAnimal, getSpecies, getBatch, listWeightsForAnimal } from "@/lib/repo";
+import {
+  getAnimal,
+  getSpecies,
+  getBatch,
+  listWeightsForAnimal,
+  listMedicalByAnimal,
+} from "@/lib/repo";
 import { updateAnimalStatusAction, deleteAnimalAction } from "@/lib/actions/animals";
 import { t, type DictKey } from "@/lib/i18n";
 import ConfirmForm from "@/components/forms/ConfirmForm";
@@ -25,10 +31,11 @@ export default async function AnimalDetailPage({
 
   const animal = await getAnimal(animalId, user.farm_id);
   if (!animal) notFound();
-  const [species, batch, weights] = await Promise.all([
+  const [species, batch, weights, medicalRecords] = await Promise.all([
     getSpecies(animal.species_id),
     getBatch(animal.batch_id, user.farm_id),
     listWeightsForAnimal(animalId, user.farm_id),
+    listMedicalByAnimal(animalId, user.farm_id),
   ]);
 
   return (
@@ -125,6 +132,24 @@ export default async function AnimalDetailPage({
           </ul>
         )}
         {canAddWeight && <AnimalWeightForm lang={lang} animalId={animal.id} />}
+      </div>
+
+      <div className="card space-y-4 p-4">
+        <h2 className="font-semibold text-foreground">{t(lang, "animals.medicalHistory")}</h2>
+        {medicalRecords.length === 0 ? (
+          <p className="text-sm text-muted">{t(lang, "animals.noMedical")}</p>
+        ) : (
+          <ul className="space-y-1 text-sm">
+            {medicalRecords.map((m) => (
+              <li key={m.id} className="flex justify-between gap-3">
+                <span className="text-muted">{m.event_date}</span>
+                <span className="flex-1 text-foreground">
+                  {t(lang, `medical.recordType.${m.record_type}` as DictKey)} — {m.title}
+                </span>
+              </li>
+            ))}
+          </ul>
+        )}
       </div>
 
       {canDelete && (

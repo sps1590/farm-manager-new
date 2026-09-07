@@ -110,6 +110,7 @@ export interface PurchaseRow {
   total_amount: number;
   purchase_date: string;
   vendor: string | null;
+  receipt_number: string | null;
   notes: string | null;
   created_by: number | null;
   created_at: string;
@@ -127,6 +128,7 @@ export interface SaleRow {
   sale_date: string;
   buyer: string | null;
   income_head: string | null;
+  receipt_number: string | null;
   notes: string | null;
   created_by: number | null;
   created_at: string;
@@ -136,12 +138,18 @@ export type MedicalRecordType =
   | "vaccination"
   | "treatment"
   | "checkup"
-  | "mortality";
+  | "mortality"
+  | "herd_spraying"
+  | "deworming"
+  | "hoof_trimming"
+  | "tagging"
+  | "other";
 
 export interface MedicalRecordRow {
   id: number;
   species_id: number | null;
   batch_id: number | null;
+  animal_id: number | null;
   record_type: MedicalRecordType;
   title: string;
   event_date: string;
@@ -300,10 +308,15 @@ export interface ProductionRecordRow {
   id: number;
   species_id: number | null;
   batch_id: number | null;
+  animal_id: number | null;
   product_type: string;
   record_date: string;
   quantity: number;
   unit: string | null;
+  am_total: number | null;
+  noon_total: number | null;
+  pm_total: number | null;
+  consumed_quantity: number | null;
   notes: string | null;
   created_by: number | null;
   created_at: string;
@@ -321,11 +334,30 @@ export interface AnimalRow {
   sex: AnimalSex;
   birth_date: string | null;
   breed: string | null;
+  group_id: number | null;
   status: AnimalStatus;
   status_date: string | null;
   status_notes: string | null;
   notes: string | null;
   created_by: number | null;
+  created_at: string;
+}
+
+export type MasterDataStatus = "active" | "inactive";
+
+export interface AnimalBreedRow {
+  id: number;
+  species_id: number;
+  name: string;
+  status: MasterDataStatus;
+  created_at: string;
+}
+
+export interface AnimalGroupRow {
+  id: number;
+  species_id: number;
+  name: string;
+  status: MasterDataStatus;
   created_at: string;
 }
 

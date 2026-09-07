@@ -77,7 +77,15 @@ export default function NewSaleForm({
           </select>
         </div>
         {productOptions && (
-          <div>
+          // Explicit `key`s on this and every sibling below are required --
+          // without them, toggling this field in/out shifts the positions
+          // of later uncontrolled <input>/<select> siblings, and React
+          // reconciles same-tag elements at the same position by updating
+          // in place rather than remounting, which can leave a stale typed
+          // value from one field showing under a different field's label
+          // (found live in NewBreedingForm.tsx's mammal/poultry switch;
+          // this form has the same shape of conditional).
+          <div key="productType">
             <label className="label" htmlFor="product_type">
               {t(lang, "sales.productType")}
             </label>
@@ -100,7 +108,7 @@ export default function NewSaleForm({
             </select>
           </div>
         )}
-        <div>
+        <div key="itemName">
           <label className="label" htmlFor="item_name">
             {t(lang, "sales.itemName")}
           </label>
@@ -113,7 +121,7 @@ export default function NewSaleForm({
             onChange={(e) => setItemName(e.target.value)}
           />
         </div>
-        <div>
+        <div key="batch">
           <label className="label" htmlFor="batch_id">
             {t(lang, "sales.batch")}
           </label>
@@ -129,13 +137,13 @@ export default function NewSaleForm({
             })}
           </select>
         </div>
-        <div>
+        <div key="buyer">
           <label className="label" htmlFor="buyer">
             {t(lang, "sales.buyer")}
           </label>
           <input id="buyer" name="buyer" className="input" />
         </div>
-        <div>
+        <div key="incomeHead">
           <label className="label" htmlFor="income_head">
             {t(lang, "sales.incomeHead")}
           </label>
@@ -148,7 +156,7 @@ export default function NewSaleForm({
             ))}
           </select>
         </div>
-        <div>
+        <div key="quantity">
           <label className="label" htmlFor="quantity">
             {t(lang, "common.quantity")}
           </label>
@@ -163,13 +171,13 @@ export default function NewSaleForm({
             onChange={(e) => autoTotal.onQuantityChange(e.target.value)}
           />
         </div>
-        <div>
+        <div key="unit">
           <label className="label" htmlFor="unit">
             {t(lang, "common.unit")}
           </label>
           <input id="unit" name="unit" className="input" placeholder="kg / pcs" />
         </div>
-        <div>
+        <div key="unitPrice">
           <label className="label" htmlFor="unit_price">
             {t(lang, "common.unitPrice")}
           </label>
@@ -184,7 +192,7 @@ export default function NewSaleForm({
             onChange={(e) => autoTotal.onUnitPriceChange(e.target.value)}
           />
         </div>
-        <div>
+        <div key="total">
           <label className="label" htmlFor="total_amount">
             {t(lang, "common.totalAmount")} *
           </label>
@@ -201,7 +209,7 @@ export default function NewSaleForm({
           />
           <p className="mt-1 text-xs text-muted">{t(lang, "common.autoCalcHint")}</p>
         </div>
-        <div>
+        <div key="saleDate">
           <label className="label" htmlFor="sale_date">
             {t(lang, "common.date")} *
           </label>

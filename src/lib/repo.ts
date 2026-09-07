@@ -20,6 +20,8 @@ import {
   type SaleRow,
   type SalaryPaymentRow,
   type AccountRow,
+  type AnimalBreedRow,
+  type AnimalGroupRow,
   type AnimalRow,
   type AnimalWeightRow,
   type AnimalWithLatestWeight,
@@ -128,6 +130,13 @@ export async function getAnimal(
   return plainRow<AnimalRow>(rows[0]);
 }
 
+export async function listAnimals(farmId: number): Promise<AnimalRow[]> {
+  const db = await getDb();
+  return plainRows<AnimalRow>(
+    await db`SELECT * FROM animals WHERE farm_id = ${farmId} ORDER BY tag`
+  );
+}
+
 export async function listActiveAnimalsBySpecies(
   farmId: number,
   speciesId: number
@@ -140,6 +149,34 @@ export async function listActiveAnimalsBySpecies(
       ORDER BY tag
     `
   );
+}
+
+export async function listAnimalBreeds(
+  farmId: number,
+  speciesId?: number,
+  activeOnly = false
+): Promise<AnimalBreedRow[]> {
+  const db = await getDb();
+  const rows = speciesId
+    ? activeOnly
+      ? await db`SELECT * FROM animal_breeds WHERE farm_id = ${farmId} AND species_id = ${speciesId} AND status = 'active' ORDER BY name`
+      : await db`SELECT * FROM animal_breeds WHERE farm_id = ${farmId} AND species_id = ${speciesId} ORDER BY name`
+    : await db`SELECT * FROM animal_breeds WHERE farm_id = ${farmId} ORDER BY species_id, name`;
+  return plainRows<AnimalBreedRow>(rows);
+}
+
+export async function listAnimalGroups(
+  farmId: number,
+  speciesId?: number,
+  activeOnly = false
+): Promise<AnimalGroupRow[]> {
+  const db = await getDb();
+  const rows = speciesId
+    ? activeOnly
+      ? await db`SELECT * FROM animal_groups WHERE farm_id = ${farmId} AND species_id = ${speciesId} AND status = 'active' ORDER BY name`
+      : await db`SELECT * FROM animal_groups WHERE farm_id = ${farmId} AND species_id = ${speciesId} ORDER BY name`
+    : await db`SELECT * FROM animal_groups WHERE farm_id = ${farmId} ORDER BY species_id, name`;
+  return plainRows<AnimalGroupRow>(rows);
 }
 
 export async function listBreedingRecords(farmId: number): Promise<BreedingRecordRow[]> {
@@ -304,6 +341,16 @@ export async function listMedicalByBatch(
   const db = await getDb();
   return plainRows<MedicalRecordRow>(
     await db`SELECT * FROM medical_records WHERE batch_id = ${batchId} AND farm_id = ${farmId} ORDER BY event_date DESC, id DESC`
+  );
+}
+
+export async function listMedicalByAnimal(
+  animalId: number,
+  farmId: number
+): Promise<MedicalRecordRow[]> {
+  const db = await getDb();
+  return plainRows<MedicalRecordRow>(
+    await db`SELECT * FROM medical_records WHERE animal_id = ${animalId} AND farm_id = ${farmId} ORDER BY event_date DESC, id DESC`
   );
 }
 

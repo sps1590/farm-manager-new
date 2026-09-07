@@ -20,6 +20,11 @@ const TYPES: MedicalRecordType[] = [
   "treatment",
   "checkup",
   "mortality",
+  "herd_spraying",
+  "deworming",
+  "hoof_trimming",
+  "tagging",
+  "other",
 ];
 
 export async function createMedicalRecordAction(
@@ -36,6 +41,9 @@ export async function createMedicalRecordAction(
     : null;
   const batchId = formData.get("batch_id")
     ? Number(formData.get("batch_id"))
+    : null;
+  const animalId = formData.get("animal_id")
+    ? Number(formData.get("animal_id"))
     : null;
   const eventDate = String(formData.get("event_date") ?? "");
   const nextDueDate = String(formData.get("next_due_date") ?? "") || null;
@@ -71,8 +79,8 @@ export async function createMedicalRecordAction(
 
   const inserted = await db`
     INSERT INTO medical_records
-      (farm_id, species_id, batch_id, record_type, title, event_date, next_due_date, quantity_affected, administered_by, cost, notes, created_by)
-    VALUES (${user.farm_id}, ${speciesId}, ${batchId}, ${recordType}, ${title}, ${eventDate}, ${nextDueDate}, ${quantityAffected}, ${administeredBy}, ${cost}, ${notes}, ${user.id})
+      (farm_id, species_id, batch_id, animal_id, record_type, title, event_date, next_due_date, quantity_affected, administered_by, cost, notes, created_by)
+    VALUES (${user.farm_id}, ${speciesId}, ${batchId}, ${animalId}, ${recordType}, ${title}, ${eventDate}, ${nextDueDate}, ${quantityAffected}, ${administeredBy}, ${cost}, ${notes}, ${user.id})
     RETURNING id
   `;
   const recordId = (inserted[0] as { id: number }).id;
@@ -109,6 +117,7 @@ export async function createMedicalRecordAction(
   revalidatePath("/medical");
   revalidatePath("/dashboard");
   revalidatePath("/batches");
+  if (animalId) revalidatePath(`/animals/${animalId}`);
   redirect("/medical");
 }
 
@@ -118,12 +127,13 @@ export async function deleteMedicalRecordAction(formData: FormData) {
   const id = Number(formData.get("id"));
 
   const rows = await db`
-    SELECT batch_id, quantity_affected, record_type, title
+    SELECT batch_id, animal_id, quantity_affected, record_type, title
     FROM medical_records WHERE id = ${id} AND farm_id = ${user.farm_id}
   `;
   const record = rows[0] as
     | {
         batch_id: number | null;
+        animal_id: number | null;
         quantity_affected: number | null;
         record_type: string;
         title: string;
@@ -162,4 +172,5 @@ export async function deleteMedicalRecordAction(formData: FormData) {
   revalidatePath("/medical");
   revalidatePath("/dashboard");
   revalidatePath("/batches");
+  if (record?.animal_id) revalidatePath(`/animals/${record.animal_id}`);
 }

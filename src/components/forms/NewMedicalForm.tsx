@@ -1,26 +1,40 @@
 "use client";
 
-import { useActionState } from "react";
+import { useState, useActionState } from "react";
 import { createMedicalRecordAction } from "@/lib/actions/medical";
 import type { FormState } from "@/lib/actions/batches";
 import SubmitButton from "@/components/SubmitButton";
 import { t, type DictKey } from "@/lib/i18n";
-import type { BatchRow, Language, SpeciesRow } from "@/lib/types";
+import type { AnimalRow, BatchRow, Language, SpeciesRow } from "@/lib/types";
 
 const initialState: FormState = {};
-const TYPES = ["vaccination", "treatment", "checkup", "mortality"] as const;
+const TYPES = [
+  "vaccination",
+  "treatment",
+  "checkup",
+  "mortality",
+  "herd_spraying",
+  "deworming",
+  "hoof_trimming",
+  "tagging",
+  "other",
+] as const;
 
 export default function NewMedicalForm({
   lang,
   species,
   batches,
+  animalsBySpecies,
 }: {
   lang: Language;
   species: SpeciesRow[];
   batches: Array<Pick<BatchRow, "id" | "name" | "species_id" | "status">>;
+  animalsBySpecies: Record<number, AnimalRow[]>;
 }) {
   const [state, formAction] = useActionState(createMedicalRecordAction, initialState);
   const speciesById = Object.fromEntries(species.map((s) => [s.id, s]));
+  const [speciesId, setSpeciesId] = useState("");
+  const activeAnimals = speciesId ? animalsBySpecies[Number(speciesId)] ?? [] : [];
 
   return (
     <form action={formAction} className="card space-y-4 p-6">
@@ -45,11 +59,17 @@ export default function NewMedicalForm({
           </label>
           <input id="title" name="title" required className="input" />
         </div>
-        <div>
+        <div key="species">
           <label className="label" htmlFor="species_id">
             {t(lang, "common.species")}
           </label>
-          <select id="species_id" name="species_id" className="input" defaultValue="">
+          <select
+            id="species_id"
+            name="species_id"
+            className="input"
+            value={speciesId}
+            onChange={(e) => setSpeciesId(e.target.value)}
+          >
             <option value="">{t(lang, "common.none")}</option>
             {species.map((s) => (
               <option key={s.id} value={s.id}>
@@ -58,7 +78,7 @@ export default function NewMedicalForm({
             ))}
           </select>
         </div>
-        <div>
+        <div key="batch">
           <label className="label" htmlFor="batch_id">
             {t(lang, "batches.title")}
           </label>
@@ -74,7 +94,28 @@ export default function NewMedicalForm({
             })}
           </select>
         </div>
-        <div>
+        {activeAnimals.length > 0 && (
+          // key + the field's own natural remount are not enough on their
+          // own -- explicit keys on ALL siblings below are what actually
+          // stop React from reconciling by position when this field's
+          // presence toggles (see NewBreedingForm.tsx for the bug this
+          // prevents: an unkeyed same-tag sibling downstream can silently
+          // inherit a previous field's stale uncontrolled DOM value).
+          <div key="animal">
+            <label className="label" htmlFor="animal_id">
+              {t(lang, "medical.animal")}
+            </label>
+            <select id="animal_id" name="animal_id" className="input" defaultValue="">
+              <option value="">{t(lang, "common.none")}</option>
+              {activeAnimals.map((a) => (
+                <option key={a.id} value={a.id}>
+                  {a.tag} {a.name ? `— ${a.name}` : ""}
+                </option>
+              ))}
+            </select>
+          </div>
+        )}
+        <div key="quantity">
           <label className="label" htmlFor="quantity_affected">
             {t(lang, "medical.quantityAffected")}
           </label>
@@ -87,7 +128,7 @@ export default function NewMedicalForm({
             className="input"
           />
         </div>
-        <div>
+        <div key="eventDate">
           <label className="label" htmlFor="event_date">
             {t(lang, "medical.eventDate")} *
           </label>
@@ -100,19 +141,19 @@ export default function NewMedicalForm({
             className="input"
           />
         </div>
-        <div>
+        <div key="nextDue">
           <label className="label" htmlFor="next_due_date">
             {t(lang, "medical.nextDueDate")}
           </label>
           <input id="next_due_date" name="next_due_date" type="date" className="input" />
         </div>
-        <div>
+        <div key="administeredBy">
           <label className="label" htmlFor="administered_by">
             {t(lang, "medical.administeredBy")}
           </label>
           <input id="administered_by" name="administered_by" className="input" />
         </div>
-        <div>
+        <div key="cost">
           <label className="label" htmlFor="cost">
             {t(lang, "medical.cost")}
           </label>

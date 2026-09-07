@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { requirePermission, hasPermission } from "@/lib/permissions";
-import { listMedicalRecords, listSpecies, listAttachmentsFor } from "@/lib/repo";
+import { listMedicalRecords, listSpecies, listAttachmentsFor, listAnimals } from "@/lib/repo";
 import { deleteMedicalRecordAction } from "@/lib/actions/medical";
 import { t, type DictKey } from "@/lib/i18n";
 import ConfirmForm from "@/components/forms/ConfirmForm";
@@ -9,9 +9,10 @@ import AttachmentCell from "@/components/forms/AttachmentCell";
 export default async function MedicalPage() {
   const user = await requirePermission("medical", "view");
   const lang = user.language;
-  const [records, species] = await Promise.all([
+  const [records, species, animals] = await Promise.all([
     listMedicalRecords(user.farm_id),
     listSpecies(),
+    listAnimals(user.farm_id),
   ]);
   const attachments = await listAttachmentsFor(
     user.farm_id,
@@ -19,6 +20,7 @@ export default async function MedicalPage() {
     records.map((r) => r.id)
   );
   const speciesById = Object.fromEntries(species.map((s) => [s.id, s]));
+  const animalsById = Object.fromEntries(animals.map((a) => [a.id, a]));
   const canCreate = hasPermission(user, "medical", "create");
   const canDelete = hasPermission(user, "medical", "delete");
 
@@ -55,13 +57,22 @@ export default async function MedicalPage() {
             <tbody>
               {records.map((m) => {
                 const sp = m.species_id ? speciesById[m.species_id] : undefined;
+                const animal = m.animal_id ? animalsById[m.animal_id] : undefined;
                 return (
                   <tr key={m.id} className="border-b border-border last:border-0">
                     <td className="px-4 py-2 text-muted">{m.event_date}</td>
                     <td className="px-4 py-2">
                       {t(lang, `medical.recordType.${m.record_type}` as DictKey)}
                     </td>
-                    <td className="px-4 py-2">{m.title}</td>
+                    <td className="px-4 py-2">
+                      {m.title}
+                      {animal && (
+                        <span className="block text-xs text-muted">
+                          {t(lang, "medical.animal")}: {animal.tag}
+                          {animal.name ? ` — ${animal.name}` : ""}
+                        </span>
+                      )}
+                    </td>
                     <td className="px-4 py-2 text-muted">
                       {sp ? `${sp.icon} ${lang === "bn" ? sp.name_bn : sp.name_en}` : "—"}
                     </td>

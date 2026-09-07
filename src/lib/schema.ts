@@ -243,6 +243,9 @@ export const SCHEMA_STATEMENTS: string[] = [
   `CREATE INDEX IF NOT EXISTS idx_medical_batch ON medical_records(batch_id)`,
   `CREATE INDEX IF NOT EXISTS idx_medical_due ON medical_records(next_due_date)`,
   `CREATE INDEX IF NOT EXISTS idx_medical_farm ON medical_records(farm_id)`,
+  // More husbandry event types alongside the original four.
+  `ALTER TABLE medical_records DROP CONSTRAINT IF EXISTS medical_records_record_type_check`,
+  `ALTER TABLE medical_records ADD CONSTRAINT medical_records_record_type_check CHECK (record_type IN ('vaccination','treatment','checkup','mortality','herd_spraying','deworming','hoof_trimming','tagging','other'))`,
 
   // Phase 2 tables (schema ready now so Phase 1 data never needs a breaking migration;
   // UI for these lands in Phase 2 -- see PROGRESS.md).
@@ -426,6 +429,31 @@ export const SCHEMA_STATEMENTS: string[] = [
   // batches.current_quantity stays the source of truth for stock math
   // exactly as before; an animal record adds identity/history on top.
   // Gated by the existing "batches" permission module, not a new one.
+  // Per-species managed master data feeding the animal form's breed and
+  // group inputs -- see src/lib/schema.ts note on `animals.breed` below
+  // for why breed stays free text rather than a hard foreign key.
+  `CREATE TABLE IF NOT EXISTS animal_breeds (
+    id SERIAL PRIMARY KEY,
+    farm_id INTEGER NOT NULL REFERENCES farms(id) ON DELETE CASCADE,
+    species_id INTEGER NOT NULL REFERENCES species(id),
+    name TEXT NOT NULL,
+    status TEXT NOT NULL DEFAULT 'active' CHECK(status IN ('active','inactive')),
+    created_at TEXT NOT NULL DEFAULT ${NOW_TEXT},
+    UNIQUE(farm_id, species_id, name)
+  )`,
+  `CREATE INDEX IF NOT EXISTS idx_animal_breeds_farm ON animal_breeds(farm_id)`,
+
+  `CREATE TABLE IF NOT EXISTS animal_groups (
+    id SERIAL PRIMARY KEY,
+    farm_id INTEGER NOT NULL REFERENCES farms(id) ON DELETE CASCADE,
+    species_id INTEGER NOT NULL REFERENCES species(id),
+    name TEXT NOT NULL,
+    status TEXT NOT NULL DEFAULT 'active' CHECK(status IN ('active','inactive')),
+    created_at TEXT NOT NULL DEFAULT ${NOW_TEXT},
+    UNIQUE(farm_id, species_id, name)
+  )`,
+  `CREATE INDEX IF NOT EXISTS idx_animal_groups_farm ON animal_groups(farm_id)`,
+
   `CREATE TABLE IF NOT EXISTS animals (
     id SERIAL PRIMARY KEY,
     farm_id INTEGER NOT NULL REFERENCES farms(id) ON DELETE CASCADE,
@@ -446,6 +474,34 @@ export const SCHEMA_STATEMENTS: string[] = [
   )`,
   `CREATE INDEX IF NOT EXISTS idx_animals_farm ON animals(farm_id)`,
   `CREATE INDEX IF NOT EXISTS idx_animals_batch ON animals(batch_id)`,
+  // breed stays free text (not a foreign key to animal_breeds) so existing
+  // rows never need migrating -- the managed Breeds list is a per-species
+  // autofill convenience for the input, same relationship categories have
+  // to a free-text field elsewhere in this app.
+  `ALTER TABLE animals ADD COLUMN IF NOT EXISTS group_id INTEGER REFERENCES animal_groups(id)`,
+  // Optional link from a medical record to one tracked animal --
+  // informational only, never auto-changes that animal's status (e.g. a
+  // mortality record doesn't auto-mark the animal dead; the owner still
+  // does that explicitly on /animals/[id]).
+  `ALTER TABLE medical_records ADD COLUMN IF NOT EXISTS animal_id INTEGER REFERENCES animals(id)`,
+  `CREATE INDEX IF NOT EXISTS idx_medical_animal ON medical_records(animal_id)`,
+
+  // Richer milk detail on production_records -- nullable, only populated
+  // when product_type = 'milk'. Kept on the shared table rather than a
+  // parallel one: this is still "one production entry per day", just with
+  // a few extra fields for that product type, not a different lifecycle
+  // (contrast breeding_records vs incubation_batches, which really are
+  // different processes). `quantity` remains the authoritative total-
+  // produced figure Reports sums; am/noon/pm auto-sum into it client-side.
+  `ALTER TABLE production_records ADD COLUMN IF NOT EXISTS animal_id INTEGER REFERENCES animals(id)`,
+  `ALTER TABLE production_records ADD COLUMN IF NOT EXISTS am_total DOUBLE PRECISION`,
+  `ALTER TABLE production_records ADD COLUMN IF NOT EXISTS noon_total DOUBLE PRECISION`,
+  `ALTER TABLE production_records ADD COLUMN IF NOT EXISTS pm_total DOUBLE PRECISION`,
+  `ALTER TABLE production_records ADD COLUMN IF NOT EXISTS consumed_quantity DOUBLE PRECISION`,
+
+  // Receipt number on Purchases/Sales.
+  `ALTER TABLE purchases ADD COLUMN IF NOT EXISTS receipt_number TEXT`,
+  `ALTER TABLE sales ADD COLUMN IF NOT EXISTS receipt_number TEXT`,
 
   // Append-only weight-history log per animal.
   `CREATE TABLE IF NOT EXISTS animal_weights (
