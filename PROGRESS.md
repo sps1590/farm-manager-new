@@ -438,6 +438,55 @@ period-locking/year-end close)
   Earnings) — the `retained_earnings` account exists structurally but
   nothing posts to it yet. A separately-scoped follow-on if wanted.
 
+**Post-Tier-3 gap-fill** (done 2026-09-08, from an owner-supplied
+reference-app screenshot review — four items picked from the gap
+analysis; two related gaps, "farm entry date"/"how obtained"/a real
+sire-tag reference on the animal record itself, were explicitly left
+out of scope)
+- **Medical records linked to a specific animal**: `medical_records`
+  gains a nullable `animal_id`. `NewMedicalForm.tsx` shows an optional
+  Animal select (same `listActiveAnimalsBySpecies()`-driven conditional
+  pattern as Breeding) when the chosen species has active tracked
+  animals. Shown on both `/medical`'s list (under the record title) and
+  a new "Medical history" section on `/animals/[id]`
+  (`listMedicalByAnimal()`). **Informational only** — linking never
+  auto-changes the animal's status, same discipline as Breeding records
+  not touching `animals`/`batches.current_quantity`.
+- **More husbandry event types**: `medical_records.record_type` CHECK
+  extended with `herd_spraying`, `deworming`, `hoof_trimming`, `tagging`,
+  `other` alongside the original four.
+- **Richer milk/production detail**: `production_records` gains nullable
+  `animal_id`, `am_total`, `noon_total`, `pm_total`, `consumed_quantity`.
+  `NewProductionForm.tsx` reveals a Whole-farm/Individual-cow toggle plus
+  AM/Noon/PM inputs when `milk` is selected; those three auto-sum into
+  the existing `quantity` field client-side, and a "fed to calves /
+  consumed" amount is tracked separately. `quantity` stays the one
+  figure `/reports`' production summary sums — the new fields are
+  additive detail on top of it, not a replacement.
+- **Cattle Breeds, Groups, and a receipt number**: new farm-scoped,
+  per-species `animal_breeds`/`animal_groups` master-data tables
+  (same shape as `expense_categories`, add/deactivate only — no hard
+  delete, matching that precedent), managed from a new "Cattle breeds &
+  groups" section on Farm Profile shown per species with Individual
+  Animal Tracking enabled. `animals.breed` deliberately stays free text
+  (the managed Breeds list is a datalist-backed autofill convenience,
+  not a foreign key, so no existing data needs migrating);
+  `animals.group_id` is a new nullable FK. `purchases`/`sales` gain a
+  nullable `receipt_number` field and list column.
+- Same permission gating as the rest of this app's optional-tracking
+  features: `batches` module for records, owner-only (`requireOwner()`)
+  for the Breeds/Groups master-data manager, matching
+  `CategoryManager.tsx`'s existing categories.
+- **Bug found and fixed along the way**: a stale-value-leak in
+  `NewSaleForm.tsx` (missing `key` props on conditional sibling
+  `<div>`s, the same React-reconciliation-by-position bug class first
+  found live in `NewBreedingForm.tsx`'s mammal/poultry switch) — toggling
+  the species-driven product-type preset could leak one field's value
+  under a different field's label. Fixed with explicit `key` props on
+  every sibling; the same discipline was applied proactively while
+  building `NewMedicalForm.tsx`'s new Animal picker so it didn't ship
+  with the same latent bug.
+
 ## What's NOT built yet — future phases
 
 **Tier 3, item 3 — native mobile apps: skipped for now** (owner's
@@ -510,6 +559,17 @@ Database: Neon Postgres, provisioned through Vercel's Storage integration.
 
 ## Changelog
 
+- **2026-09-08** — Post-Tier-3 gap-fill, all four owner-approved items
+  from a reference-app screenshot review: medical records optionally
+  linked to a specific tracked animal (informational only, shown on
+  `/medical` and the animal's own page), five new husbandry event types,
+  richer milk/production detail (AM/Noon/PM auto-summing into `quantity`,
+  individual-cow mode, a "consumed" amount), and managed per-species
+  Cattle Breeds/Groups plus a `receipt_number` field on Purchases/Sales.
+  Also fixed a latent stale-value-leak bug in `NewSaleForm.tsx` (missing
+  `key` props on conditional siblings) found while auditing for the same
+  bug class, and a pre-existing `no-assign-module-variable` lint error in
+  `team.ts`.
 - **2026-09-08** — Tier 3, item 3 (native mobile apps) skipped for now,
   owner's decision — see "What's NOT built yet" below. No code change.
 - **2026-09-08** — Tier 3, item 2: double-entry accounting ledger. New
