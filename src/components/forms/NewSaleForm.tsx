@@ -221,6 +221,19 @@ export default function NewSaleForm({
         </label>
         <textarea id="notes" name="notes" rows={2} className="input" />
       </div>
+      <div>
+        <label className="label" htmlFor="attachment">
+          {t(lang, "common.attachment")}
+        </label>
+        <input
+          id="attachment"
+          name="attachment"
+          type="file"
+          accept="image/*,application/pdf"
+          className="input"
+        />
+        <p className="mt-1 text-xs text-muted">{t(lang, "common.attachmentHint")}</p>
+      </div>
       {state?.error && <p className="text-sm text-danger">{state.error}</p>}
       <SubmitButton>{t(lang, "common.save")}</SubmitButton>
     </form>

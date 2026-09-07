@@ -88,6 +88,10 @@ can register and use the same deployment, each with their own team and data.
   dedicated task.
 - **PWA**: `public/manifest.json` + `public/icon.svg` + theme-color meta.
   No service worker / offline caching yet (see Known gaps).
+- **File storage: Vercel Blob (`@vercel/blob`)**, provisioned 2026-09-07 via
+  Vercel's Storage tab (store name `farm-manager-blob`), which auto-injects
+  a `BLOB_READ_WRITE_TOKEN` env var. Used for receipt/document attachments
+  on Purchases, Sales, and Medical records (`src/lib/attachments.ts`).
 
 ## What's built
 
@@ -274,6 +278,28 @@ plan's highest-risk item, touching the live `purchases.category` field)
   instead of the old fixed `purchases.category.<key>` i18n lookup. All
   create/toggle actions are audit-logged.
 
+**File attachments** (done 2026-09-07, Tier 1 item 6 — completes the iFARM
+ToR gap-analysis Tier 1 scope)
+- New polymorphic `attachments` table (`related_table`/`related_id`, no FK
+  since it can point at purchases, sales, or medical_records — application
+  code owns cleanup) backed by Vercel Blob (`@vercel/blob`, store
+  provisioned by the owner via Vercel's Storage tab, `BLOB_READ_WRITE_TOKEN`
+  auto-injected).
+- New purchases/sales/medical records can attach one photo or PDF receipt
+  (10MB max, image/* or application/pdf only) via a file field on each
+  "new record" form. The upload happens inside the same server action as
+  the record's own creation — the blob upload is attempted before the
+  database insert, so a failed/invalid attachment surfaces as a normal
+  form validation error rather than leaving an orphaned record.
+- Purchases/Sales/Medical list pages gained an "Attachments" column
+  (`AttachmentCell.tsx`) showing a 📎 View link per file plus a Remove
+  action gated by that module's existing delete permission.
+- Deleting a purchase, sale, or medical record now also deletes its
+  attachments (DB rows + the actual blob files, best-effort) via
+  `deleteAttachmentsFor()` in `src/lib/attachments.ts` — same
+  no-orphaned-data discipline as the batch-stock-reversal fixes earlier in
+  this build.
+
 ## What's NOT built yet — future phases
 
 **Phase 2 — people and money** (done as of 2026-09-02 — see HR and
@@ -336,6 +362,13 @@ Database: Neon Postgres, provisioned through Vercel's Storage integration.
 
 ## Changelog
 
+- **2026-09-07** — Tier 1, item 6: file attachments — completes the Tier 1
+  scope from the iFARM ToR gap-analysis build plan. New `attachments` table
+  (polymorphic, backed by Vercel Blob) lets a purchase, sale, or medical
+  record carry a receipt/vet-bill photo or PDF, uploaded from the same
+  "new record" form. List pages show an Attachments column with view/remove
+  actions; deleting a record now cleans up its attachments too (DB rows and
+  the underlying blob files).
 - **2026-09-07** — Tier 1, item 5: configurable cost/income heads. New
   `expense_categories`/`income_heads` tables (farm-scoped, seeded with
   today's fixed values so no existing purchase/sale is invalidated),

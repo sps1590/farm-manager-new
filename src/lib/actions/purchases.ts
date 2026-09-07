@@ -5,6 +5,13 @@ import { revalidatePath } from "next/cache";
 import { getDb } from "../db";
 import { requirePermission } from "../permissions";
 import { logAudit } from "../audit";
+import {
+  ATTACHMENT_MAX_SIZE,
+  ATTACHMENT_ALLOWED_TYPES,
+  uploadAttachmentBlob,
+  insertAttachment,
+  deleteAttachmentsFor,
+} from "../attachments";
 import type { FormState } from "./batches";
 
 export async function createPurchaseAction(
@@ -48,6 +55,20 @@ export async function createPurchaseAction(
     return { error: "Category, item, and date are required." };
   }
 
+  const attachmentFile = formData.get("attachment");
+  let attachmentUrl: string | null = null;
+  let attachmentFilename: string | null = null;
+  if (attachmentFile instanceof File && attachmentFile.size > 0) {
+    if (attachmentFile.size > ATTACHMENT_MAX_SIZE) {
+      return { error: "Attachment must be 10MB or smaller." };
+    }
+    if (!ATTACHMENT_ALLOWED_TYPES.has(attachmentFile.type)) {
+      return { error: "Attachment must be an image or PDF." };
+    }
+    attachmentUrl = await uploadAttachmentBlob(attachmentFile, user.farm_id, "purchases");
+    attachmentFilename = attachmentFile.name;
+  }
+
   if (!speciesId && batchId) {
     const batchRows = await db`
       SELECT species_id FROM batches WHERE id = ${batchId} AND farm_id = ${user.farm_id}
@@ -62,6 +83,17 @@ export async function createPurchaseAction(
     RETURNING id
   `;
   const purchaseId = (inserted[0] as { id: number }).id;
+
+  if (attachmentUrl && attachmentFilename) {
+    await insertAttachment({
+      farmId: user.farm_id,
+      relatedTable: "purchases",
+      relatedId: purchaseId,
+      url: attachmentUrl,
+      filename: attachmentFilename,
+      uploadedBy: user.id,
+    });
+  }
 
   await logAudit({
     farmId: user.farm_id,
@@ -107,6 +139,7 @@ export async function deletePurchaseAction(formData: FormData) {
     | undefined;
 
   await db`DELETE FROM purchases WHERE id = ${id} AND farm_id = ${user.farm_id}`;
+  await deleteAttachmentsFor(user.farm_id, "purchases", id);
 
   // An "animal" purchase increased the linked batch's stock on create --
   // deleting it must reverse that, or the batch count silently drifts.

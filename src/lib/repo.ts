@@ -3,6 +3,7 @@ import { getDb } from "./db";
 import {
   emptyPermissions,
   type AssetRow,
+  type AttachmentRow,
   type AttendanceRow,
   type AuditLogRow,
   type BatchRow,
@@ -167,6 +168,27 @@ export async function listMedicalRecords(
   return plainRows<MedicalRecordRow>(
     await db`SELECT * FROM medical_records WHERE farm_id = ${farmId} ORDER BY event_date DESC, id DESC LIMIT ${limit}`
   );
+}
+
+export async function listAttachmentsFor(
+  farmId: number,
+  relatedTable: string,
+  relatedIds: number[]
+): Promise<Record<number, AttachmentRow[]>> {
+  if (relatedIds.length === 0) return {};
+  const db = await getDb();
+  const rows = plainRows<AttachmentRow>(
+    await db`
+      SELECT * FROM attachments
+      WHERE farm_id = ${farmId} AND related_table = ${relatedTable} AND related_id = ANY(${relatedIds})
+      ORDER BY created_at DESC
+    `
+  );
+  const map: Record<number, AttachmentRow[]> = {};
+  for (const row of rows) {
+    (map[row.related_id] ??= []).push(row);
+  }
+  return map;
 }
 
 export async function listUpcomingMedical(

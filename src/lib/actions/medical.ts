@@ -5,6 +5,13 @@ import { revalidatePath } from "next/cache";
 import { getDb } from "../db";
 import { requirePermission } from "../permissions";
 import { logAudit } from "../audit";
+import {
+  ATTACHMENT_MAX_SIZE,
+  ATTACHMENT_ALLOWED_TYPES,
+  uploadAttachmentBlob,
+  insertAttachment,
+  deleteAttachmentsFor,
+} from "../attachments";
 import type { MedicalRecordType } from "../types";
 import type { FormState } from "./batches";
 
@@ -44,6 +51,20 @@ export async function createMedicalRecordAction(
     return { error: "Type, title, and date are required." };
   }
 
+  const attachmentFile = formData.get("attachment");
+  let attachmentUrl: string | null = null;
+  let attachmentFilename: string | null = null;
+  if (attachmentFile instanceof File && attachmentFile.size > 0) {
+    if (attachmentFile.size > ATTACHMENT_MAX_SIZE) {
+      return { error: "Attachment must be 10MB or smaller." };
+    }
+    if (!ATTACHMENT_ALLOWED_TYPES.has(attachmentFile.type)) {
+      return { error: "Attachment must be an image or PDF." };
+    }
+    attachmentUrl = await uploadAttachmentBlob(attachmentFile, user.farm_id, "medical_records");
+    attachmentFilename = attachmentFile.name;
+  }
+
   const inserted = await db`
     INSERT INTO medical_records
       (farm_id, species_id, batch_id, record_type, title, event_date, next_due_date, quantity_affected, administered_by, cost, notes, created_by)
@@ -51,6 +72,17 @@ export async function createMedicalRecordAction(
     RETURNING id
   `;
   const recordId = (inserted[0] as { id: number }).id;
+
+  if (attachmentUrl && attachmentFilename) {
+    await insertAttachment({
+      farmId: user.farm_id,
+      relatedTable: "medical_records",
+      relatedId: recordId,
+      url: attachmentUrl,
+      filename: attachmentFilename,
+      uploadedBy: user.id,
+    });
+  }
 
   await logAudit({
     farmId: user.farm_id,
@@ -95,6 +127,7 @@ export async function deleteMedicalRecordAction(formData: FormData) {
     | undefined;
 
   await db`DELETE FROM medical_records WHERE id = ${id} AND farm_id = ${user.farm_id}`;
+  await deleteAttachmentsFor(user.farm_id, "medical_records", id);
 
   // A mortality record decreased the linked batch's stock on create --
   // deleting it must restore that stock, or the batch count silently drifts.

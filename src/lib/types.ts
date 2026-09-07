@@ -278,6 +278,16 @@ export interface CategoryRow {
   sort_order: number;
 }
 
+export interface AttachmentRow {
+  id: number;
+  related_table: string;
+  related_id: number;
+  url: string;
+  filename: string;
+  uploaded_by: number | null;
+  created_at: string;
+}
+
 export type AuditAction = "create" | "update" | "delete";
 
 export interface AuditLogRow {

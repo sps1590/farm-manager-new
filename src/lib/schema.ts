@@ -341,4 +341,21 @@ export const SCHEMA_STATEMENTS: string[] = [
   )`,
   `CREATE INDEX IF NOT EXISTS idx_leave_farm ON leave_applications(farm_id)`,
   `CREATE INDEX IF NOT EXISTS idx_leave_employee ON leave_applications(employee_id)`,
+
+  // Polymorphic (related_table/related_id, no FK -- points at purchases,
+  // sales, or medical_records) file attachments, backed by Vercel Blob.
+  // related_id has no FK because it can point at any of several tables;
+  // application code is responsible for deleting a record's attachments
+  // (DB row + blob) when the record itself is deleted.
+  `CREATE TABLE IF NOT EXISTS attachments (
+    id SERIAL PRIMARY KEY,
+    farm_id INTEGER NOT NULL REFERENCES farms(id) ON DELETE CASCADE,
+    related_table TEXT NOT NULL,
+    related_id INTEGER NOT NULL,
+    url TEXT NOT NULL,
+    filename TEXT NOT NULL,
+    uploaded_by INTEGER REFERENCES users(id),
+    created_at TEXT NOT NULL DEFAULT ${NOW_TEXT}
+  )`,
+  `CREATE INDEX IF NOT EXISTS idx_attachments_related ON attachments(farm_id, related_table, related_id)`,
 ];

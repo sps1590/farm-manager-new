@@ -1,9 +1,10 @@
 import Link from "next/link";
 import { requirePermission, hasPermission } from "@/lib/permissions";
-import { listMedicalRecords, listSpecies } from "@/lib/repo";
+import { listMedicalRecords, listSpecies, listAttachmentsFor } from "@/lib/repo";
 import { deleteMedicalRecordAction } from "@/lib/actions/medical";
 import { t, type DictKey } from "@/lib/i18n";
 import ConfirmForm from "@/components/forms/ConfirmForm";
+import AttachmentCell from "@/components/forms/AttachmentCell";
 
 export default async function MedicalPage() {
   const user = await requirePermission("medical", "view");
@@ -12,6 +13,11 @@ export default async function MedicalPage() {
     listMedicalRecords(user.farm_id),
     listSpecies(),
   ]);
+  const attachments = await listAttachmentsFor(
+    user.farm_id,
+    "medical_records",
+    records.map((r) => r.id)
+  );
   const speciesById = Object.fromEntries(species.map((s) => [s.id, s]));
   const canCreate = hasPermission(user, "medical", "create");
   const canDelete = hasPermission(user, "medical", "delete");
@@ -42,6 +48,7 @@ export default async function MedicalPage() {
                 <th className="px-4 py-2 font-medium">{t(lang, "medical.recordTitle")}</th>
                 <th className="px-4 py-2 font-medium">{t(lang, "common.species")}</th>
                 <th className="px-4 py-2 font-medium">{t(lang, "medical.nextDueDate")}</th>
+                <th className="px-4 py-2 font-medium">{t(lang, "common.attachments")}</th>
                 <th className="px-4 py-2 font-medium" />
               </tr>
             </thead>
@@ -59,6 +66,15 @@ export default async function MedicalPage() {
                       {sp ? `${sp.icon} ${lang === "bn" ? sp.name_bn : sp.name_en}` : "—"}
                     </td>
                     <td className="px-4 py-2 text-muted">{m.next_due_date || "—"}</td>
+                    <td className="px-4 py-2">
+                      <AttachmentCell
+                        lang={lang}
+                        attachments={attachments[m.id]}
+                        relatedTable="medical_records"
+                        returnPath="/medical"
+                        canDelete={canDelete}
+                      />
+                    </td>
                     <td className="px-4 py-2 text-right">
                       {canDelete && (
                         <ConfirmForm

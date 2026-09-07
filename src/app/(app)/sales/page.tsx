@@ -1,9 +1,10 @@
 import Link from "next/link";
 import { requirePermission, hasPermission } from "@/lib/permissions";
-import { listSales, listSpecies } from "@/lib/repo";
+import { listSales, listSpecies, listAttachmentsFor } from "@/lib/repo";
 import { deleteSaleAction } from "@/lib/actions/sales";
 import { t } from "@/lib/i18n";
 import ConfirmForm from "@/components/forms/ConfirmForm";
+import AttachmentCell from "@/components/forms/AttachmentCell";
 import { formatCurrency } from "@/lib/format";
 
 export default async function SalesPage() {
@@ -13,6 +14,11 @@ export default async function SalesPage() {
     listSales(user.farm_id),
     listSpecies(),
   ]);
+  const attachments = await listAttachmentsFor(
+    user.farm_id,
+    "sales",
+    sales.map((s) => s.id)
+  );
   const speciesById = Object.fromEntries(species.map((s) => [s.id, s]));
   const canCreate = hasPermission(user, "sales", "create");
   const canDelete = hasPermission(user, "sales", "delete");
@@ -47,6 +53,7 @@ export default async function SalesPage() {
                 <th className="px-4 py-2 font-medium text-right">
                   {t(lang, "common.totalAmount")}
                 </th>
+                <th className="px-4 py-2 font-medium">{t(lang, "common.attachments")}</th>
                 <th className="px-4 py-2 font-medium" />
               </tr>
             </thead>
@@ -63,6 +70,15 @@ export default async function SalesPage() {
                     <td className="px-4 py-2 text-muted">{s.buyer || "—"}</td>
                     <td className="px-4 py-2 text-right font-medium text-primary">
                       {t(lang, "common.currency")}{formatCurrency(s.total_amount)}
+                    </td>
+                    <td className="px-4 py-2">
+                      <AttachmentCell
+                        lang={lang}
+                        attachments={attachments[s.id]}
+                        relatedTable="sales"
+                        returnPath="/sales"
+                        canDelete={canDelete}
+                      />
                     </td>
                     <td className="px-4 py-2 text-right">
                       {canDelete && (
@@ -89,6 +105,7 @@ export default async function SalesPage() {
                 <td className="px-4 py-2 text-right font-bold text-primary">
                   {t(lang, "common.currency")}{formatCurrency(total)}
                 </td>
+                <td />
                 <td />
               </tr>
             </tfoot>

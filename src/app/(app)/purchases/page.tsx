@@ -1,10 +1,11 @@
 import Link from "next/link";
 import { requirePermission, hasPermission } from "@/lib/permissions";
-import { listPurchases, listSpecies, listExpenseCategories } from "@/lib/repo";
+import { listPurchases, listSpecies, listExpenseCategories, listAttachmentsFor } from "@/lib/repo";
 import { deletePurchaseAction } from "@/lib/actions/purchases";
 import { t } from "@/lib/i18n";
 import { categoryLabel } from "@/lib/labels";
 import ConfirmForm from "@/components/forms/ConfirmForm";
+import AttachmentCell from "@/components/forms/AttachmentCell";
 import { formatCurrency } from "@/lib/format";
 
 export default async function PurchasesPage() {
@@ -15,6 +16,11 @@ export default async function PurchasesPage() {
     listSpecies(),
     listExpenseCategories(user.farm_id),
   ]);
+  const attachments = await listAttachmentsFor(
+    user.farm_id,
+    "purchases",
+    purchases.map((p) => p.id)
+  );
   const speciesById = Object.fromEntries(species.map((s) => [s.id, s]));
   const canCreate = hasPermission(user, "purchases", "create");
   const canDelete = hasPermission(user, "purchases", "delete");
@@ -50,6 +56,7 @@ export default async function PurchasesPage() {
                 <th className="px-4 py-2 font-medium text-right">
                   {t(lang, "common.totalAmount")}
                 </th>
+                <th className="px-4 py-2 font-medium">{t(lang, "common.attachments")}</th>
                 <th className="px-4 py-2 font-medium" />
               </tr>
             </thead>
@@ -69,6 +76,15 @@ export default async function PurchasesPage() {
                     <td className="px-4 py-2 text-muted">{p.vendor || "—"}</td>
                     <td className="px-4 py-2 text-right font-medium">
                       {t(lang, "common.currency")}{formatCurrency(p.total_amount)}
+                    </td>
+                    <td className="px-4 py-2">
+                      <AttachmentCell
+                        lang={lang}
+                        attachments={attachments[p.id]}
+                        relatedTable="purchases"
+                        returnPath="/purchases"
+                        canDelete={canDelete}
+                      />
                     </td>
                     <td className="px-4 py-2 text-right">
                       {canDelete && (
@@ -95,6 +111,7 @@ export default async function PurchasesPage() {
                 <td className="px-4 py-2 text-right font-bold text-foreground">
                   {t(lang, "common.currency")}{formatCurrency(total)}
                 </td>
+                <td />
                 <td />
               </tr>
             </tfoot>
