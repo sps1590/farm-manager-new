@@ -89,9 +89,14 @@ can register and use the same deployment, each with their own team and data.
 - **PWA**: `public/manifest.json` + `public/icon.svg` + theme-color meta.
   No service worker / offline caching yet (see Known gaps).
 - **File storage: Vercel Blob (`@vercel/blob`)**, provisioned 2026-09-07 via
-  Vercel's Storage tab (store name `farm-manager-blob`), which auto-injects
-  a `BLOB_READ_WRITE_TOKEN` env var. Used for receipt/document attachments
-  on Purchases, Sales, and Medical records (`src/lib/attachments.ts`).
+  Vercel's Storage tab (store name `farm-manager-blob`, private access),
+  which auto-injects a `BLOB_READ_WRITE_TOKEN` env var. Used for
+  receipt/document attachments on Purchases, Sales, and Medical records
+  (`src/lib/attachments.ts`). The store is private, not public, so blob
+  URLs are never directly browsable — every read goes through
+  `/api/attachments/[id]` (`src/app/api/attachments/[id]/route.ts`), which
+  checks the session user's `farm_id` and module `view` permission before
+  streaming the file back.
 
 ## What's built
 
