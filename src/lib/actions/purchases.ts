@@ -4,6 +4,7 @@ import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
 import { getDb } from "../db";
 import { requirePermission } from "../permissions";
+import { logAudit } from "../audit";
 import type { PurchaseCategory } from "../types";
 import type { FormState } from "./batches";
 
@@ -57,11 +58,23 @@ export async function createPurchaseAction(
     if (batchRows[0]) speciesId = Number(batchRows[0].species_id);
   }
 
-  await db`
+  const inserted = await db`
     INSERT INTO purchases
       (farm_id, species_id, batch_id, category, item_name, quantity, unit, unit_price, total_amount, purchase_date, vendor, notes, created_by)
     VALUES (${user.farm_id}, ${speciesId}, ${batchId}, ${category}, ${itemName}, ${quantity}, ${unit}, ${unitPrice}, ${totalAmount}, ${purchaseDate}, ${vendor}, ${notes}, ${user.id})
+    RETURNING id
   `;
+  const purchaseId = (inserted[0] as { id: number }).id;
+
+  await logAudit({
+    farmId: user.farm_id,
+    userId: user.id,
+    action: "create",
+    module: "purchases",
+    recordId: purchaseId,
+    summary: `Recorded purchase: ${itemName} (${totalAmount})`,
+    after: { category, itemName, quantity, unitPrice, totalAmount, purchaseDate, vendor },
+  });
 
   // Buying more animals for an existing batch grows that batch's live stock.
   if (category === "animal" && batchId && quantity) {
@@ -84,10 +97,16 @@ export async function deletePurchaseAction(formData: FormData) {
   const id = Number(formData.get("id"));
 
   const rows = await db`
-    SELECT batch_id, quantity, category FROM purchases WHERE id = ${id} AND farm_id = ${user.farm_id}
+    SELECT batch_id, quantity, category, item_name, total_amount FROM purchases WHERE id = ${id} AND farm_id = ${user.farm_id}
   `;
   const purchase = rows[0] as
-    | { batch_id: number | null; quantity: number | null; category: string }
+    | {
+        batch_id: number | null;
+        quantity: number | null;
+        category: string;
+        item_name: string;
+        total_amount: number;
+      }
     | undefined;
 
   await db`DELETE FROM purchases WHERE id = ${id} AND farm_id = ${user.farm_id}`;
@@ -100,6 +119,18 @@ export async function deletePurchaseAction(formData: FormData) {
       SET current_quantity = GREATEST(0, current_quantity - ${purchase.quantity}), updated_at = to_char(now(), 'YYYY-MM-DD HH24:MI:SS')
       WHERE id = ${purchase.batch_id} AND farm_id = ${user.farm_id}
     `;
+  }
+
+  if (purchase) {
+    await logAudit({
+      farmId: user.farm_id,
+      userId: user.id,
+      action: "delete",
+      module: "purchases",
+      recordId: id,
+      summary: `Deleted purchase: ${purchase.item_name} (${purchase.total_amount})`,
+      before: purchase,
+    });
   }
 
   revalidatePath("/purchases");

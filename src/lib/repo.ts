@@ -2,6 +2,7 @@ import "server-only";
 import { getDb } from "./db";
 import {
   emptyPermissions,
+  type AuditLogRow,
   type BatchRow,
   type EmployeeRow,
   type FarmRow,
@@ -602,6 +603,24 @@ export async function listSalaryPayments(
       SELECT * FROM salary_payments
       WHERE employee_id = ${employeeId} AND farm_id = ${farmId}
       ORDER BY pay_period DESC, id DESC
+    `
+  );
+}
+
+export async function listAuditLog(
+  farmId: number,
+  limit = 300
+): Promise<AuditLogRow[]> {
+  const db = await getDb();
+  return plainRows<AuditLogRow>(
+    await db`
+      SELECT al.id, al.user_id, u.name as user_name, al.action, al.module,
+        al.record_id, al.summary, al.created_at
+      FROM audit_log al
+      LEFT JOIN users u ON u.id = al.user_id
+      WHERE al.farm_id = ${farmId}
+      ORDER BY al.id DESC
+      LIMIT ${limit}
     `
   );
 }

@@ -231,6 +231,15 @@ can register and use the same deployment, each with their own team and data.
   (cumulative investment); only the ৳ profit/loss amount is period-scoped —
   `/partners` and `/reports` themselves are untouched and stay all-time.
 
+**Audit trail** (done 2026-09-07, Tier 1 item 1 of the iFARM ToR build plan)
+- `/audit` (owner-only): append-only log of every create/edit/delete
+  across Purchases, Sales, Batches, Medical, Employees, Salary Payments
+  and Partners, showing who, when, what action, and a human-readable
+  summary. `logAudit()` in `src/lib/audit.ts` is called from each action
+  after its primary write succeeds and never throws, so a logging failure
+  can't break the feature it's observing. Team/user management isn't
+  wired in yet (out of this pass's approved scope).
+
 ## What's NOT built yet — future phases
 
 **Phase 2 — people and money** (done as of 2026-09-02 — see HR and
@@ -293,6 +302,15 @@ Database: Neon Postgres, provisioned through Vercel's Storage integration.
 
 ## Changelog
 
+- **2026-09-07** — Tier 1, item 1: audit trail. New append-only
+  `audit_log` table + `logAudit()` helper (`src/lib/audit.ts`, swallows its
+  own errors so logging can never break the action it observes), wired into
+  every create/edit/delete across Purchases, Sales, Batches, Medical,
+  Employees, Salary Payments and Partners. New owner-only `/audit` page
+  (`nav.audit`) lists who did what, when. While touching Medical for this,
+  found and fixed the same class of bug Phase 0 fixed for sales/purchases:
+  `deleteMedicalRecordAction` never reversed the batch-stock decrease a
+  mortality record made on create.
 - **2026-09-07** — Stability pass (Phase 0 of the Tier 1 build plan — the
   app is now live on a real farm, so correctness and speed came first).
   Fixed a real data-integrity bug: deleting a sale or an "animal" purchase

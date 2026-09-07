@@ -227,3 +227,16 @@ export interface SalaryPaymentRow {
   created_by: number | null;
   created_at: string;
 }
+
+export type AuditAction = "create" | "update" | "delete";
+
+export interface AuditLogRow {
+  id: number;
+  user_id: number | null;
+  user_name: string | null;
+  action: AuditAction;
+  module: string;
+  record_id: number | null;
+  summary: string;
+  created_at: string;
+}

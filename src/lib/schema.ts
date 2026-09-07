@@ -241,4 +241,23 @@ export const SCHEMA_STATEMENTS: string[] = [
   )`,
   `ALTER TABLE salary_payments ADD COLUMN IF NOT EXISTS farm_id INTEGER REFERENCES farms(id) ON DELETE CASCADE`,
   `CREATE INDEX IF NOT EXISTS idx_salary_payments_farm ON salary_payments(farm_id)`,
+
+  // Append-only. Nothing in the app ever updates or deletes a row here --
+  // only INSERT via logAudit() (src/lib/audit.ts). before_json/after_json
+  // hold whatever snapshot the call site captured (often partial, not a
+  // full row), for a human-readable trail rather than a strict field diff.
+  `CREATE TABLE IF NOT EXISTS audit_log (
+    id SERIAL PRIMARY KEY,
+    farm_id INTEGER REFERENCES farms(id) ON DELETE CASCADE,
+    user_id INTEGER REFERENCES users(id),
+    action TEXT NOT NULL CHECK(action IN ('create','update','delete')),
+    module TEXT NOT NULL,
+    record_id INTEGER,
+    summary TEXT NOT NULL,
+    before_json TEXT,
+    after_json TEXT,
+    created_at TEXT NOT NULL DEFAULT ${NOW_TEXT}
+  )`,
+  `CREATE INDEX IF NOT EXISTS idx_audit_log_farm ON audit_log(farm_id)`,
+  `CREATE INDEX IF NOT EXISTS idx_audit_log_created ON audit_log(created_at)`,
 ];

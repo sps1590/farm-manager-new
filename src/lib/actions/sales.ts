@@ -4,6 +4,7 @@ import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
 import { getDb } from "../db";
 import { requirePermission } from "../permissions";
+import { logAudit } from "../audit";
 import type { FormState } from "./batches";
 
 export async function createSaleAction(
@@ -46,11 +47,23 @@ export async function createSaleAction(
     if (batchRows[0]) speciesId = Number(batchRows[0].species_id);
   }
 
-  await db`
+  const inserted = await db`
     INSERT INTO sales
       (farm_id, species_id, batch_id, item_name, quantity, unit, unit_price, total_amount, sale_date, buyer, notes, created_by)
     VALUES (${user.farm_id}, ${speciesId}, ${batchId}, ${itemName}, ${quantity}, ${unit}, ${unitPrice}, ${totalAmount}, ${saleDate}, ${buyer}, ${notes}, ${user.id})
+    RETURNING id
   `;
+  const saleId = (inserted[0] as { id: number }).id;
+
+  await logAudit({
+    farmId: user.farm_id,
+    userId: user.id,
+    action: "create",
+    module: "sales",
+    recordId: saleId,
+    summary: `Recorded sale: ${itemName} (${totalAmount})`,
+    after: { itemName, quantity, unitPrice, totalAmount, saleDate, buyer },
+  });
 
   if (batchId && quantity) {
     await db`
@@ -72,9 +85,11 @@ export async function deleteSaleAction(formData: FormData) {
   const id = Number(formData.get("id"));
 
   const rows = await db`
-    SELECT batch_id, quantity FROM sales WHERE id = ${id} AND farm_id = ${user.farm_id}
+    SELECT batch_id, quantity, item_name, total_amount FROM sales WHERE id = ${id} AND farm_id = ${user.farm_id}
   `;
-  const sale = rows[0] as { batch_id: number | null; quantity: number | null } | undefined;
+  const sale = rows[0] as
+    | { batch_id: number | null; quantity: number | null; item_name: string; total_amount: number }
+    | undefined;
 
   await db`DELETE FROM sales WHERE id = ${id} AND farm_id = ${user.farm_id}`;
 
@@ -86,6 +101,18 @@ export async function deleteSaleAction(formData: FormData) {
       SET current_quantity = current_quantity + ${sale.quantity}, updated_at = to_char(now(), 'YYYY-MM-DD HH24:MI:SS')
       WHERE id = ${sale.batch_id} AND farm_id = ${user.farm_id}
     `;
+  }
+
+  if (sale) {
+    await logAudit({
+      farmId: user.farm_id,
+      userId: user.id,
+      action: "delete",
+      module: "sales",
+      recordId: id,
+      summary: `Deleted sale: ${sale.item_name} (${sale.total_amount})`,
+      before: sale,
+    });
   }
 
   revalidatePath("/sales");

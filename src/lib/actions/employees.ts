@@ -4,6 +4,7 @@ import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
 import { getDb } from "../db";
 import { requireOwner } from "../permissions";
+import { logAudit } from "../audit";
 
 export interface EmployeeFormState {
   error?: string;
@@ -30,10 +31,22 @@ export async function createEmployeeAction(
     return { error: "employees.error.nameRequired" };
   }
 
-  await db`
+  const inserted = await db`
     INSERT INTO employees (farm_id, name, phone, role_title, join_date, monthly_salary, housing_provided, notes)
     VALUES (${owner.farm_id}, ${name}, ${phone}, ${roleTitle}, ${joinDate}, ${monthlySalary}, ${housingProvided}, ${notes})
+    RETURNING id
   `;
+  const employeeId = (inserted[0] as { id: number }).id;
+
+  await logAudit({
+    farmId: owner.farm_id,
+    userId: owner.id,
+    action: "create",
+    module: "employees",
+    recordId: employeeId,
+    summary: `Added employee: ${name}`,
+    after: { name, phone, roleTitle, joinDate, monthlySalary },
+  });
 
   revalidatePath("/employees");
   redirect("/employees");
@@ -73,6 +86,16 @@ export async function updateEmployeeAction(
     WHERE id = ${id} AND farm_id = ${owner.farm_id}
   `;
 
+  await logAudit({
+    farmId: owner.farm_id,
+    userId: owner.id,
+    action: "update",
+    module: "employees",
+    recordId: id,
+    summary: `Updated employee: ${name}`,
+    after: { name, phone, roleTitle, joinDate, monthlySalary, status },
+  });
+
   revalidatePath("/employees");
   revalidatePath(`/employees/${id}`);
   redirect(`/employees/${id}`);
@@ -82,10 +105,23 @@ export async function deleteEmployeeAction(formData: FormData) {
   const owner = await requireOwner();
   const db = await getDb();
   const id = Number(formData.get("id"));
+  const rows = await db`SELECT name FROM employees WHERE id = ${id} AND farm_id = ${owner.farm_id}`;
+  const employee = rows[0] as { name: string } | undefined;
   // Cascades salary_payments (ON DELETE CASCADE) -- fine for a mistakenly
   // added record; an employee who leaves should be set inactive via edit
   // instead of deleted, to keep their payroll history.
   await db`DELETE FROM employees WHERE id = ${id} AND farm_id = ${owner.farm_id}`;
+  if (employee) {
+    await logAudit({
+      farmId: owner.farm_id,
+      userId: owner.id,
+      action: "delete",
+      module: "employees",
+      recordId: id,
+      summary: `Deleted employee: ${employee.name}`,
+      before: employee,
+    });
+  }
   revalidatePath("/employees");
   redirect("/employees");
 }
@@ -118,10 +154,22 @@ export async function addSalaryPaymentAction(
     return { error: "employees.error.notFound" };
   }
 
-  await db`
+  const inserted = await db`
     INSERT INTO salary_payments (farm_id, employee_id, amount, pay_period, status, paid_date, notes, created_by)
     VALUES (${owner.farm_id}, ${employeeId}, ${amount}, ${payPeriod}, ${status}, ${paidDate}, ${notes}, ${owner.id})
+    RETURNING id
   `;
+  const paymentId = (inserted[0] as { id: number }).id;
+
+  await logAudit({
+    farmId: owner.farm_id,
+    userId: owner.id,
+    action: "create",
+    module: "salary_payments",
+    recordId: paymentId,
+    summary: `Added salary payment: ${payPeriod} (${amount})`,
+    after: { employeeId, amount, payPeriod, status, paidDate },
+  });
 
   revalidatePath(`/employees/${employeeId}`);
   revalidatePath("/reports");
@@ -139,6 +187,15 @@ export async function markSalaryPaymentPaidAction(formData: FormData) {
     UPDATE salary_payments SET status = 'paid', paid_date = COALESCE(paid_date, ${today})
     WHERE id = ${id} AND farm_id = ${owner.farm_id}
   `;
+  await logAudit({
+    farmId: owner.farm_id,
+    userId: owner.id,
+    action: "update",
+    module: "salary_payments",
+    recordId: id,
+    summary: "Marked salary payment paid",
+    after: { status: "paid", paidDate: today },
+  });
   revalidatePath(`/employees/${employeeId}`);
   revalidatePath("/reports");
 }
@@ -148,7 +205,22 @@ export async function deleteSalaryPaymentAction(formData: FormData) {
   const db = await getDb();
   const id = Number(formData.get("id"));
   const employeeId = Number(formData.get("employee_id"));
+  const rows = await db`
+    SELECT amount, pay_period FROM salary_payments WHERE id = ${id} AND farm_id = ${owner.farm_id}
+  `;
+  const payment = rows[0] as { amount: number; pay_period: string } | undefined;
   await db`DELETE FROM salary_payments WHERE id = ${id} AND farm_id = ${owner.farm_id}`;
+  if (payment) {
+    await logAudit({
+      farmId: owner.farm_id,
+      userId: owner.id,
+      action: "delete",
+      module: "salary_payments",
+      recordId: id,
+      summary: `Deleted salary payment: ${payment.pay_period} (${payment.amount})`,
+      before: payment,
+    });
+  }
   revalidatePath(`/employees/${employeeId}`);
   revalidatePath("/reports");
 }

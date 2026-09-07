@@ -6,6 +6,7 @@ import { z } from "zod";
 import bcrypt from "bcryptjs";
 import { getDb } from "../db";
 import { requireOwner } from "../permissions";
+import { logAudit } from "../audit";
 
 export interface PartnerFormState {
   error?: string;
@@ -65,10 +66,22 @@ export async function createPartnerAction(
   }
 
   const passwordHash = bcrypt.hashSync(password, 10);
-  await db`
+  const inserted = await db`
     INSERT INTO users (farm_id, email, phone, password_hash, name, role, is_partner, language)
     VALUES (${owner.farm_id}, ${email}, ${phone}, ${passwordHash}, ${name}, 'partner', true, 'bn')
+    RETURNING id
   `;
+  const partnerId = (inserted[0] as { id: number }).id;
+
+  await logAudit({
+    farmId: owner.farm_id,
+    userId: owner.id,
+    action: "create",
+    module: "partners",
+    recordId: partnerId,
+    summary: `Added partner: ${name}`,
+    after: { name, email, phone },
+  });
 
   revalidatePath("/partners");
   redirect("/partners");
@@ -109,10 +122,22 @@ export async function addInvestmentEntryAction(
     return { error: "partners.error.notFound" };
   }
 
-  await db`
+  const inserted = await db`
     INSERT INTO partner_investments (farm_id, user_id, entry_type, amount, entry_date, notes, created_by)
     VALUES (${owner.farm_id}, ${partnerId}, ${entryType}, ${amount}, ${entryDate}, ${notes ?? null}, ${owner.id})
+    RETURNING id
   `;
+  const entryId = (inserted[0] as { id: number }).id;
+
+  await logAudit({
+    farmId: owner.farm_id,
+    userId: owner.id,
+    action: "create",
+    module: "partners",
+    recordId: entryId,
+    summary: `Partner ${entryType}: ${amount} for partner #${partnerId}`,
+    after: { partnerId, entryType, amount, entryDate },
+  });
 
   revalidatePath(`/partners/${partnerId}`);
   revalidatePath("/partners");
@@ -125,7 +150,22 @@ export async function deleteInvestmentEntryAction(formData: FormData) {
   const db = await getDb();
   const id = Number(formData.get("id"));
   const partnerId = Number(formData.get("partner_id"));
+  const rows = await db`
+    SELECT entry_type, amount FROM partner_investments WHERE id = ${id} AND farm_id = ${owner.farm_id}
+  `;
+  const entry = rows[0] as { entry_type: string; amount: number } | undefined;
   await db`DELETE FROM partner_investments WHERE id = ${id} AND farm_id = ${owner.farm_id}`;
+  if (entry) {
+    await logAudit({
+      farmId: owner.farm_id,
+      userId: owner.id,
+      action: "delete",
+      module: "partners",
+      recordId: id,
+      summary: `Deleted partner ${entry.entry_type}: ${entry.amount} for partner #${partnerId}`,
+      before: entry,
+    });
+  }
   revalidatePath(`/partners/${partnerId}`);
   revalidatePath("/partners");
   revalidatePath("/dashboard");
@@ -144,6 +184,15 @@ export async function updatePartnerProfitShareAction(formData: FormData) {
     UPDATE users SET profit_share_percent = ${profitShare}, profit_share_auto = false
     WHERE id = ${partnerId} AND farm_id = ${owner.farm_id} AND is_partner = true
   `;
+  await logAudit({
+    farmId: owner.farm_id,
+    userId: owner.id,
+    action: "update",
+    module: "partners",
+    recordId: partnerId,
+    summary: `Set manual profit share to ${profitShare}% for partner #${partnerId}`,
+    after: { profitShare, profitShareAuto: false },
+  });
   revalidatePath(`/partners/${partnerId}`);
   revalidatePath("/partners");
 }
@@ -156,6 +205,15 @@ export async function resetPartnerProfitShareAction(formData: FormData) {
     UPDATE users SET profit_share_auto = true
     WHERE id = ${partnerId} AND farm_id = ${owner.farm_id} AND is_partner = true
   `;
+  await logAudit({
+    farmId: owner.farm_id,
+    userId: owner.id,
+    action: "update",
+    module: "partners",
+    recordId: partnerId,
+    summary: `Reset profit share to auto-sync for partner #${partnerId}`,
+    after: { profitShareAuto: true },
+  });
   revalidatePath(`/partners/${partnerId}`);
   revalidatePath("/partners");
 }
@@ -166,6 +224,15 @@ export async function updateFarmReserveAction(formData: FormData) {
   const reserve = Number(formData.get("profit_reserve_percent"));
   if (!Number.isFinite(reserve) || reserve < 0 || reserve > 100) return;
   await db`UPDATE farms SET profit_reserve_percent = ${reserve} WHERE id = ${owner.farm_id}`;
+  await logAudit({
+    farmId: owner.farm_id,
+    userId: owner.id,
+    action: "update",
+    module: "partners",
+    recordId: null,
+    summary: `Set company reserve to ${reserve}%`,
+    after: { reserve },
+  });
   revalidatePath("/partners");
 }
 
@@ -182,6 +249,15 @@ export async function deactivatePartnerAction(formData: FormData) {
     WHERE id = ${partnerId} AND farm_id = ${owner.farm_id} AND is_partner = true
   `;
   await db`DELETE FROM sessions WHERE user_id = ${partnerId}`;
+  await logAudit({
+    farmId: owner.farm_id,
+    userId: owner.id,
+    action: "update",
+    module: "partners",
+    recordId: partnerId,
+    summary: `Deactivated partner #${partnerId}`,
+    after: { partnerStatus: "inactive" },
+  });
   revalidatePath(`/partners/${partnerId}`);
   revalidatePath("/partners");
   revalidatePath("/dashboard");
@@ -195,6 +271,15 @@ export async function reactivatePartnerAction(formData: FormData) {
     UPDATE users SET partner_status = 'active'
     WHERE id = ${partnerId} AND farm_id = ${owner.farm_id} AND is_partner = true
   `;
+  await logAudit({
+    farmId: owner.farm_id,
+    userId: owner.id,
+    action: "update",
+    module: "partners",
+    recordId: partnerId,
+    summary: `Reactivated partner #${partnerId}`,
+    after: { partnerStatus: "active" },
+  });
   revalidatePath(`/partners/${partnerId}`);
   revalidatePath("/partners");
   revalidatePath("/dashboard");

@@ -4,6 +4,7 @@ import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
 import { getDb } from "../db";
 import { requirePermission } from "../permissions";
+import { logAudit } from "../audit";
 import type { MedicalRecordType } from "../types";
 import type { FormState } from "./batches";
 
@@ -43,11 +44,23 @@ export async function createMedicalRecordAction(
     return { error: "Type, title, and date are required." };
   }
 
-  await db`
+  const inserted = await db`
     INSERT INTO medical_records
       (farm_id, species_id, batch_id, record_type, title, event_date, next_due_date, quantity_affected, administered_by, cost, notes, created_by)
     VALUES (${user.farm_id}, ${speciesId}, ${batchId}, ${recordType}, ${title}, ${eventDate}, ${nextDueDate}, ${quantityAffected}, ${administeredBy}, ${cost}, ${notes}, ${user.id})
+    RETURNING id
   `;
+  const recordId = (inserted[0] as { id: number }).id;
+
+  await logAudit({
+    farmId: user.farm_id,
+    userId: user.id,
+    action: "create",
+    module: "medical",
+    recordId,
+    summary: `Recorded ${recordType}: ${title}`,
+    after: { recordType, title, eventDate, nextDueDate, quantityAffected, cost },
+  });
 
   if (recordType === "mortality" && batchId && quantityAffected) {
     await db`
@@ -67,7 +80,49 @@ export async function deleteMedicalRecordAction(formData: FormData) {
   const user = await requirePermission("medical", "delete");
   const db = await getDb();
   const id = Number(formData.get("id"));
+
+  const rows = await db`
+    SELECT batch_id, quantity_affected, record_type, title
+    FROM medical_records WHERE id = ${id} AND farm_id = ${user.farm_id}
+  `;
+  const record = rows[0] as
+    | {
+        batch_id: number | null;
+        quantity_affected: number | null;
+        record_type: string;
+        title: string;
+      }
+    | undefined;
+
   await db`DELETE FROM medical_records WHERE id = ${id} AND farm_id = ${user.farm_id}`;
+
+  // A mortality record decreased the linked batch's stock on create --
+  // deleting it must restore that stock, or the batch count silently drifts.
+  if (
+    record?.record_type === "mortality" &&
+    record.batch_id &&
+    record.quantity_affected
+  ) {
+    await db`
+      UPDATE batches
+      SET current_quantity = current_quantity + ${record.quantity_affected}, updated_at = to_char(now(), 'YYYY-MM-DD HH24:MI:SS')
+      WHERE id = ${record.batch_id} AND farm_id = ${user.farm_id}
+    `;
+  }
+
+  if (record) {
+    await logAudit({
+      farmId: user.farm_id,
+      userId: user.id,
+      action: "delete",
+      module: "medical",
+      recordId: id,
+      summary: `Deleted ${record.record_type}: ${record.title}`,
+      before: record,
+    });
+  }
+
   revalidatePath("/medical");
   revalidatePath("/dashboard");
+  revalidatePath("/batches");
 }
