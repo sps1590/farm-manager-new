@@ -44,3 +44,31 @@ export async function setEnabledSpeciesAction(formData: FormData) {
   revalidatePath("/medical/new");
   revalidatePath("/dashboard");
 }
+
+// A separate table from farm_species (see schema.ts) so this never gets
+// wiped by setEnabledSpeciesAction's delete+reinsert cycle above.
+export async function setIndividualTrackingAction(formData: FormData) {
+  const owner = await requireOwner();
+  const db = await getDb();
+
+  const trackedIds = new Set(
+    formData
+      .getAll("tracked_species_ids")
+      .map((v) => Number(v))
+      .filter((n) => Number.isFinite(n))
+  );
+  const allSpeciesIds = formData
+    .getAll("all_species_ids")
+    .map((v) => Number(v))
+    .filter((n) => Number.isFinite(n));
+
+  for (const speciesId of allSpeciesIds) {
+    await db`
+      INSERT INTO species_tracking_settings (farm_id, species_id, individual_tracking)
+      VALUES (${owner.farm_id}, ${speciesId}, ${trackedIds.has(speciesId)})
+      ON CONFLICT (farm_id, species_id) DO UPDATE SET individual_tracking = ${trackedIds.has(speciesId)}
+    `;
+  }
+
+  revalidatePath("/farm");
+}

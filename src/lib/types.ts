@@ -309,6 +309,40 @@ export interface ProductionRecordRow {
   created_at: string;
 }
 
+export type AnimalSex = "male" | "female" | "unknown";
+export type AnimalStatus = "active" | "sold" | "dead" | "culled";
+
+export interface AnimalRow {
+  id: number;
+  batch_id: number;
+  species_id: number;
+  tag: string;
+  name: string | null;
+  sex: AnimalSex;
+  birth_date: string | null;
+  breed: string | null;
+  status: AnimalStatus;
+  status_date: string | null;
+  status_notes: string | null;
+  notes: string | null;
+  created_by: number | null;
+  created_at: string;
+}
+
+export interface AnimalWithLatestWeight extends AnimalRow {
+  latest_weight: number | null;
+}
+
+export interface AnimalWeightRow {
+  id: number;
+  animal_id: number;
+  weigh_date: string;
+  weight: number;
+  notes: string | null;
+  created_by: number | null;
+  created_at: string;
+}
+
 export interface AttachmentRow {
   id: number;
   related_table: string;

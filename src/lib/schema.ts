@@ -409,4 +409,54 @@ export const SCHEMA_STATEMENTS: string[] = [
   // moved off a fixed CHECK in Tier 1).
   `ALTER TABLE user_permissions DROP CONSTRAINT IF EXISTS user_permissions_module_check`,
   `ALTER TABLE user_permissions ADD CONSTRAINT user_permissions_module_check CHECK (module IN ('batches','purchases','sales','medical','production'))`,
+
+  // Tier 2: individual animal tracking, opt-in per species. Deliberately a
+  // separate table from farm_species rather than a new column on it --
+  // setEnabledSpeciesAction (src/lib/actions/farm.ts) fully DELETEs and
+  // re-inserts every farm_species row on every save, which would silently
+  // wipe a flag stored on that same table.
+  `CREATE TABLE IF NOT EXISTS species_tracking_settings (
+    farm_id INTEGER NOT NULL REFERENCES farms(id) ON DELETE CASCADE,
+    species_id INTEGER NOT NULL REFERENCES species(id) ON DELETE CASCADE,
+    individual_tracking BOOLEAN NOT NULL DEFAULT false,
+    PRIMARY KEY (farm_id, species_id)
+  )`,
+
+  // Layered on top of the batch model, not a replacement for it --
+  // batches.current_quantity stays the source of truth for stock math
+  // exactly as before; an animal record adds identity/history on top.
+  // Gated by the existing "batches" permission module, not a new one.
+  `CREATE TABLE IF NOT EXISTS animals (
+    id SERIAL PRIMARY KEY,
+    farm_id INTEGER NOT NULL REFERENCES farms(id) ON DELETE CASCADE,
+    batch_id INTEGER NOT NULL REFERENCES batches(id) ON DELETE CASCADE,
+    species_id INTEGER NOT NULL REFERENCES species(id),
+    tag TEXT NOT NULL,
+    name TEXT,
+    sex TEXT NOT NULL DEFAULT 'unknown' CHECK(sex IN ('male','female','unknown')),
+    birth_date TEXT,
+    breed TEXT,
+    status TEXT NOT NULL DEFAULT 'active' CHECK(status IN ('active','sold','dead','culled')),
+    status_date TEXT,
+    status_notes TEXT,
+    notes TEXT,
+    created_by INTEGER REFERENCES users(id),
+    created_at TEXT NOT NULL DEFAULT ${NOW_TEXT},
+    UNIQUE(farm_id, tag)
+  )`,
+  `CREATE INDEX IF NOT EXISTS idx_animals_farm ON animals(farm_id)`,
+  `CREATE INDEX IF NOT EXISTS idx_animals_batch ON animals(batch_id)`,
+
+  // Append-only weight-history log per animal.
+  `CREATE TABLE IF NOT EXISTS animal_weights (
+    id SERIAL PRIMARY KEY,
+    farm_id INTEGER NOT NULL REFERENCES farms(id) ON DELETE CASCADE,
+    animal_id INTEGER NOT NULL REFERENCES animals(id) ON DELETE CASCADE,
+    weigh_date TEXT NOT NULL,
+    weight DOUBLE PRECISION NOT NULL,
+    notes TEXT,
+    created_by INTEGER REFERENCES users(id),
+    created_at TEXT NOT NULL DEFAULT ${NOW_TEXT}
+  )`,
+  `CREATE INDEX IF NOT EXISTS idx_animal_weights_animal ON animal_weights(animal_id)`,
 ];

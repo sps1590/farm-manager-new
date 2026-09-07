@@ -7,11 +7,14 @@ import {
   listPurchasesByBatch,
   listSalesByBatch,
   listMedicalByBatch,
+  getIndividualTrackingSpeciesIds,
+  listAnimalsByBatch,
 } from "@/lib/repo";
 import { updateBatchStatusAction, deleteBatchAction } from "@/lib/actions/batches";
-import { t } from "@/lib/i18n";
+import { t, type DictKey } from "@/lib/i18n";
 import ConfirmForm from "@/components/forms/ConfirmForm";
-import { formatCurrency } from "@/lib/format";
+import AnimalForm from "@/components/forms/AnimalForm";
+import { formatCurrency, formatQuantity } from "@/lib/format";
 
 export default async function BatchDetailPage({
   params,
@@ -24,15 +27,21 @@ export default async function BatchDetailPage({
   const lang = user.language;
   const canEdit = hasPermission(user, "batches", "edit");
   const canDelete = hasPermission(user, "batches", "delete");
+  const canAddAnimal = hasPermission(user, "batches", "create");
 
   const batch = await getBatch(batchId, user.farm_id);
   if (!batch) notFound();
-  const [species, purchases, sales, medical] = await Promise.all([
+  const [species, purchases, sales, medical, trackingIds] = await Promise.all([
     getSpecies(batch.species_id),
     listPurchasesByBatch(batchId, user.farm_id),
     listSalesByBatch(batchId, user.farm_id),
     listMedicalByBatch(batchId, user.farm_id),
+    getIndividualTrackingSpeciesIds(user.farm_id),
   ]);
+  const tracksIndividuals = trackingIds.has(batch.species_id);
+  const animals = tracksIndividuals
+    ? await listAnimalsByBatch(batchId, user.farm_id)
+    : [];
 
   return (
     <div className="space-y-6">
@@ -156,6 +165,53 @@ export default async function BatchDetailPage({
           )}
         </div>
       </div>
+
+      {tracksIndividuals && (
+        <div className="card space-y-4 p-4">
+          <h2 className="font-semibold text-foreground">{t(lang, "animals.title")}</h2>
+          {animals.length === 0 ? (
+            <p className="text-sm text-muted">{t(lang, "animals.empty")}</p>
+          ) : (
+            <div className="overflow-x-auto">
+              <table className="w-full min-w-[520px] text-sm">
+                <thead>
+                  <tr className="border-b border-border text-left text-muted">
+                    <th className="px-3 py-2 font-medium">{t(lang, "animals.tag")}</th>
+                    <th className="px-3 py-2 font-medium">{t(lang, "animals.name")}</th>
+                    <th className="px-3 py-2 font-medium">{t(lang, "animals.sex")}</th>
+                    <th className="px-3 py-2 font-medium">{t(lang, "common.status")}</th>
+                    <th className="px-3 py-2 font-medium text-right">{t(lang, "animals.latestWeight")}</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {animals.map((a) => (
+                    <tr key={a.id} className="border-b border-border last:border-0">
+                      <td className="px-3 py-2">
+                        <Link href={`/animals/${a.id}`} className="font-medium text-primary hover:underline">
+                          {a.tag}
+                        </Link>
+                      </td>
+                      <td className="px-3 py-2">{a.name || "—"}</td>
+                      <td className="px-3 py-2 text-muted">
+                        {t(lang, `animals.sex.${a.sex}` as DictKey)}
+                      </td>
+                      <td className="px-3 py-2 text-muted">
+                        {t(lang, `animals.status.${a.status}` as DictKey)}
+                      </td>
+                      <td className="px-3 py-2 text-right">
+                        {a.latest_weight != null ? formatQuantity(a.latest_weight) : "—"}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
+          {canAddAnimal && (
+            <AnimalForm lang={lang} batchId={batch.id} speciesId={batch.species_id} />
+          )}
+        </div>
+      )}
     </div>
   );
 }

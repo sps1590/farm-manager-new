@@ -1,8 +1,19 @@
 import Link from "next/link";
 import { Users, Handshake, UserCog, LineChart, type LucideIcon } from "lucide-react";
 import { requireOwner } from "@/lib/permissions";
-import { getFarm, listSpecies, getEnabledSpeciesIds, listExpenseCategories, listIncomeHeads } from "@/lib/repo";
-import { updateFarmDetailsAction, setEnabledSpeciesAction } from "@/lib/actions/farm";
+import {
+  getFarm,
+  listSpecies,
+  getEnabledSpeciesIds,
+  getIndividualTrackingSpeciesIds,
+  listExpenseCategories,
+  listIncomeHeads,
+} from "@/lib/repo";
+import {
+  updateFarmDetailsAction,
+  setEnabledSpeciesAction,
+  setIndividualTrackingAction,
+} from "@/lib/actions/farm";
 import {
   createExpenseCategoryAction,
   toggleExpenseCategoryStatusAction,
@@ -23,13 +34,16 @@ export default async function FarmProfilePage() {
   const owner = await requireOwner();
   const lang = owner.language;
 
-  const [farm, allSpecies, enabledIds, expenseCategories, incomeHeads] = await Promise.all([
-    getFarm(owner.farm_id),
-    listSpecies(),
-    getEnabledSpeciesIds(owner.farm_id),
-    listExpenseCategories(owner.farm_id),
-    listIncomeHeads(owner.farm_id),
-  ]);
+  const [farm, allSpecies, enabledIds, trackingIds, expenseCategories, incomeHeads] =
+    await Promise.all([
+      getFarm(owner.farm_id),
+      listSpecies(),
+      getEnabledSpeciesIds(owner.farm_id),
+      getIndividualTrackingSpeciesIds(owner.farm_id),
+      listExpenseCategories(owner.farm_id),
+      listIncomeHeads(owner.farm_id),
+    ]);
+  const enabledSpeciesList = allSpecies.filter((s) => enabledIds.has(s.id));
 
   return (
     <div className="space-y-6">
@@ -108,6 +122,38 @@ export default async function FarmProfilePage() {
             {t(lang, "common.save")}
           </button>
         </form>
+      </div>
+
+      <div className="card space-y-4 p-6">
+        <h2 className="font-semibold text-foreground">{t(lang, "animals.trackingTitle")}</h2>
+        <p className="text-sm text-muted">{t(lang, "animals.trackingHint")}</p>
+        {enabledSpeciesList.length === 0 ? (
+          <p className="text-sm text-muted">{t(lang, "animals.trackingNoSpecies")}</p>
+        ) : (
+          <form action={setIndividualTrackingAction} className="space-y-3">
+            {enabledSpeciesList.map((s) => (
+              <input key={s.id} type="hidden" name="all_species_ids" value={s.id} />
+            ))}
+            <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
+              {enabledSpeciesList.map((s) => (
+                <label key={s.id} className="flex items-center gap-2 text-sm">
+                  <input
+                    type="checkbox"
+                    name="tracked_species_ids"
+                    value={s.id}
+                    defaultChecked={trackingIds.has(s.id)}
+                  />
+                  <span>
+                    {s.icon} {lang === "bn" ? s.name_bn : s.name_en}
+                  </span>
+                </label>
+              ))}
+            </div>
+            <button type="submit" className="btn-secondary">
+              {t(lang, "common.save")}
+            </button>
+          </form>
+        )}
       </div>
 
       <div className="card space-y-4 p-6">

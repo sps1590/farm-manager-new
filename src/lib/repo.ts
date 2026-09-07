@@ -19,6 +19,9 @@ import {
   type PurchaseRow,
   type SaleRow,
   type SalaryPaymentRow,
+  type AnimalRow,
+  type AnimalWeightRow,
+  type AnimalWithLatestWeight,
   type ProductionRecordRow,
   type SpeciesRow,
   type TaskRow,
@@ -81,6 +84,56 @@ export async function listEnabledSpecies(farmId: number): Promise<SpeciesRow[]> 
 export async function getEnabledSpeciesIds(farmId: number): Promise<Set<number>> {
   const enabled = await listEnabledSpecies(farmId);
   return new Set(enabled.map((s) => s.id));
+}
+
+export async function getIndividualTrackingSpeciesIds(
+  farmId: number
+): Promise<Set<number>> {
+  const db = await getDb();
+  const rows = await db`
+    SELECT species_id FROM species_tracking_settings
+    WHERE farm_id = ${farmId} AND individual_tracking = true
+  `;
+  return new Set((rows as { species_id: number }[]).map((r) => r.species_id));
+}
+
+export async function listAnimalsByBatch(
+  batchId: number,
+  farmId: number
+): Promise<AnimalWithLatestWeight[]> {
+  const db = await getDb();
+  return plainRows<AnimalWithLatestWeight>(
+    await db`
+      SELECT a.*,
+        (SELECT weight FROM animal_weights w WHERE w.animal_id = a.id ORDER BY w.weigh_date DESC, w.id DESC LIMIT 1) as latest_weight
+      FROM animals a
+      WHERE a.batch_id = ${batchId} AND a.farm_id = ${farmId}
+      ORDER BY a.created_at DESC
+    `
+  );
+}
+
+export async function getAnimal(
+  id: number,
+  farmId: number
+): Promise<AnimalRow | undefined> {
+  const db = await getDb();
+  const rows = await db`SELECT * FROM animals WHERE id = ${id} AND farm_id = ${farmId}`;
+  return plainRow<AnimalRow>(rows[0]);
+}
+
+export async function listWeightsForAnimal(
+  animalId: number,
+  farmId: number
+): Promise<AnimalWeightRow[]> {
+  const db = await getDb();
+  return plainRows<AnimalWeightRow>(
+    await db`
+      SELECT * FROM animal_weights
+      WHERE animal_id = ${animalId} AND farm_id = ${farmId}
+      ORDER BY weigh_date DESC, id DESC
+    `
+  );
 }
 
 export async function listBatches(

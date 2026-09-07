@@ -343,6 +343,30 @@ from the iFARM ToR gap-analysis Tier 2, picked by the owner)
   create a sale, a deliberate deferral matching how attendance doesn't yet
   feed payroll cost.
 
+**Individual animal tracking** (done 2026-09-07, Tier 2 item 3 — the last
+of this tier, and its most invasive item)
+- Opt-in per species from Farm Profile (`/farm`, new "Individual animal
+  tracking" card, one checkbox per currently-enabled species) — stored in
+  a new `species_tracking_settings` table, deliberately separate from
+  `farm_species` so it's never wiped by `setEnabledSpeciesAction`'s full
+  delete+reinsert cycle on that table.
+- When enabled for a batch's species, the batch detail page
+  (`/batches/[id]`) gains an "Individual animals" section: tag/ID, name,
+  sex, status, latest weight, plus an inline add-animal form. Each animal
+  links to `/animals/[id]` for its weight history (append-only log,
+  `animal_weights`) and a status change (active/sold/dead/culled, with a
+  date and note).
+- Layered on top of the existing batch model, not a replacement —
+  `batches.current_quantity` is still the only source of truth for stock
+  math, unchanged. Gated by the existing `batches` permission module
+  (view/create/edit/delete), not a new one. Marking an animal sold/dead is
+  a manual, independent action from Sales/Medical — matching a specific
+  sale or mortality record to one specific animal is intentionally out of
+  scope for this pass.
+- **This completes the full Tier 2 scope** the owner chose from the iFARM
+  ToR gap-analysis report (task engine, production recording, individual
+  animal tracking).
+
 ## What's NOT built yet — future phases
 
 **Phase 2 — people and money** (done as of 2026-09-02 — see HR and
@@ -405,6 +429,14 @@ Database: Neon Postgres, provisioned through Vercel's Storage integration.
 
 ## Changelog
 
+- **2026-09-07** — Tier 2, item 3: individual animal tracking (opt-in per
+  species from Farm Profile). New `animals`/`animal_weights`/
+  `species_tracking_settings` tables. Batch detail page gains an
+  "Individual animals" section when enabled for that species; each animal
+  gets its own page for weight history and status changes. Layered on top
+  of batches, not replacing them — `batches.current_quantity` is
+  unchanged. This completes the Tier 2 scope the owner picked from the
+  iFARM ToR gap-analysis report.
 - **2026-09-07** — Tier 2, item 2: production recording. New `/production`
   module (daily milk/egg/weight log, independent of Sales) with a new
   fifth permission-matrix module (`production`) alongside batches/
