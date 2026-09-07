@@ -367,6 +367,41 @@ of this tier, and its most invasive item)
   ToR gap-analysis report (task engine, production recording, individual
   animal tracking).
 
+**Breeding & incubation tracking** (done 2026-09-07, Tier 3 item 1 — the
+first item from the ToR gap-analysis Tier 3, picked and scoped by the
+owner: cattle, goat/sheep, duck, and chicken)
+- **New species: Goat/Sheep** (🐐) — the app previously seeded exactly six
+  species; `seedSpecies()` in `src/lib/db.ts` only runs against a fully
+  empty table, so a new `backfillNewSpecies()` (idempotent,
+  `ON CONFLICT (key) DO NOTHING`) adds it to the already-live database.
+  Off by default for every farm, same as any species — the owner enables
+  it via the existing Business Types checkboxes on `/farm`.
+- **Two tables, not one** — mammal breeding (cow, goat/sheep: heat → bred →
+  pregnancy → calving/kidding, tracked over months, optionally against an
+  individually-tracked dam) and poultry incubation (duck, chicken: egg
+  collection → incubation → hatch, tracked over weeks, batch-level not
+  per-animal) are different processes with genuinely different fields, so
+  they're modeled as separate tables (`breeding_records`,
+  `incubation_batches`) rather than one table full of nulls.
+- `/breeding` (combined list, both types, overdue highlighting) and
+  `/breeding/new` (species picker limited to the four species above;
+  picking one swaps in the mammal or poultry fields via a small hardcoded
+  `species.key` → kind map, same pattern `NewSaleForm.tsx` already uses
+  for species-aware product-type presets). Expected due/hatch date is a
+  client-side suggestion from typical gestation/incubation length, always
+  editable. If Individual Animal Tracking (Tier 2) is enabled for cow or
+  goat/sheep, the dam can be picked from that species' tracked animals;
+  otherwise a free-text label covers it.
+- Gated by the existing `batches` permission module, same choice as
+  Individual Animal Tracking — no new permission-matrix module.
+- Dashboard Alerts gained a fourth source: upcoming expected due/hatch
+  dates within 7 days (`listUpcomingBreedingEvents()`).
+- **Recording a birth or a hatch is informational only** — it does not
+  create `animals` rows or change `batches.current_quantity`. Surviving
+  offspring get added the normal way (a purchase, or a new individual
+  animal record), same deliberate non-integration as Production recording
+  not touching Sales/stock.
+
 ## What's NOT built yet — future phases
 
 **Phase 2 — people and money** (done as of 2026-09-02 — see HR and
@@ -429,6 +464,15 @@ Database: Neon Postgres, provisioned through Vercel's Storage integration.
 
 ## Changelog
 
+- **2026-09-07** — Tier 3, item 1: breeding & incubation tracking (cattle,
+  goat/sheep, duck, chicken — scoped directly by the owner from the ToR
+  gap-analysis Tier 3 list). Added Goat/Sheep as a new species (idempotent
+  backfill, since `seedSpecies()` only runs on an empty table). New
+  `breeding_records` (mammal) and `incubation_batches` (poultry) tables,
+  a combined `/breeding` list, and a species-aware new-record form.
+  Dashboard alerts gained upcoming due/hatch dates. Recording a birth or
+  hatch is informational only, matching the same non-integration-with-
+  stock precedent as Production recording.
 - **2026-09-07** — Tier 2, item 3: individual animal tracking (opt-in per
   species from Farm Profile). New `animals`/`animal_weights`/
   `species_tracking_settings` tables. Batch detail page gains an

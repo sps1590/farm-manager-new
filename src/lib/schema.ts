@@ -459,4 +459,49 @@ export const SCHEMA_STATEMENTS: string[] = [
     created_at TEXT NOT NULL DEFAULT ${NOW_TEXT}
   )`,
   `CREATE INDEX IF NOT EXISTS idx_animal_weights_animal ON animal_weights(animal_id)`,
+
+  // Tier 3: breeding & incubation tracking. Two tables, not one, because
+  // mammal breeding (per-dam, heat-to-birth over months) and poultry
+  // incubation (per-batch, egg-to-hatch over weeks) are different
+  // processes with different fields -- see PROGRESS.md. Gated by the
+  // existing "batches" permission module, not a new one.
+  `CREATE TABLE IF NOT EXISTS breeding_records (
+    id SERIAL PRIMARY KEY,
+    farm_id INTEGER NOT NULL REFERENCES farms(id) ON DELETE CASCADE,
+    species_id INTEGER NOT NULL REFERENCES species(id),
+    batch_id INTEGER REFERENCES batches(id),
+    dam_animal_id INTEGER REFERENCES animals(id),
+    dam_label TEXT,
+    sire_label TEXT,
+    method TEXT NOT NULL DEFAULT 'natural' CHECK(method IN ('natural','ai')),
+    bred_date TEXT NOT NULL,
+    expected_due_date TEXT,
+    status TEXT NOT NULL DEFAULT 'bred' CHECK(status IN ('bred','confirmed_pregnant','not_pregnant','birthed','lost')),
+    birth_date TEXT,
+    offspring_count INTEGER,
+    notes TEXT,
+    created_by INTEGER REFERENCES users(id),
+    created_at TEXT NOT NULL DEFAULT ${NOW_TEXT}
+  )`,
+  `CREATE INDEX IF NOT EXISTS idx_breeding_farm ON breeding_records(farm_id)`,
+  `CREATE INDEX IF NOT EXISTS idx_breeding_due ON breeding_records(expected_due_date)`,
+
+  `CREATE TABLE IF NOT EXISTS incubation_batches (
+    id SERIAL PRIMARY KEY,
+    farm_id INTEGER NOT NULL REFERENCES farms(id) ON DELETE CASCADE,
+    species_id INTEGER NOT NULL REFERENCES species(id),
+    batch_id INTEGER REFERENCES batches(id),
+    method TEXT NOT NULL DEFAULT 'broody' CHECK(method IN ('broody','incubator')),
+    egg_count INTEGER,
+    start_date TEXT NOT NULL,
+    expected_hatch_date TEXT,
+    status TEXT NOT NULL DEFAULT 'incubating' CHECK(status IN ('incubating','hatched','failed')),
+    hatch_date TEXT,
+    hatched_count INTEGER,
+    notes TEXT,
+    created_by INTEGER REFERENCES users(id),
+    created_at TEXT NOT NULL DEFAULT ${NOW_TEXT}
+  )`,
+  `CREATE INDEX IF NOT EXISTS idx_incubation_farm ON incubation_batches(farm_id)`,
+  `CREATE INDEX IF NOT EXISTS idx_incubation_hatch ON incubation_batches(expected_hatch_date)`,
 ];

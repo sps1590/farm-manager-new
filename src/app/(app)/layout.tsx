@@ -13,6 +13,10 @@ const NAV_ITEMS: Array<SidebarNavItem & { module?: Module }> = [
   { href: "/sales", labelKey: "nav.sales", icon: "sales", module: "sales" },
   { href: "/medical", labelKey: "nav.medical", icon: "medical", module: "medical" },
   { href: "/production", labelKey: "nav.production", icon: "production", module: "production" },
+  // Gated by "batches", same choice as Individual Animal Tracking --
+  // breeding is close enough in shape that a new permission module isn't
+  // warranted (see src/lib/actions/breeding.ts).
+  { href: "/breeding", labelKey: "nav.breeding", icon: "breeding", module: "batches" },
   // No `module` -- Tasks isn't part of the configurable permission matrix
   // (see src/lib/actions/tasks.ts), so it's visible to every team member.
   { href: "/tasks", labelKey: "nav.tasks", icon: "tasks" },

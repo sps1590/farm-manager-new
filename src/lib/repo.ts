@@ -22,6 +22,8 @@ import {
   type AnimalRow,
   type AnimalWeightRow,
   type AnimalWithLatestWeight,
+  type BreedingRecordRow,
+  type IncubationBatchRow,
   type ProductionRecordRow,
   type SpeciesRow,
   type TaskRow,
@@ -120,6 +122,108 @@ export async function getAnimal(
   const db = await getDb();
   const rows = await db`SELECT * FROM animals WHERE id = ${id} AND farm_id = ${farmId}`;
   return plainRow<AnimalRow>(rows[0]);
+}
+
+export async function listActiveAnimalsBySpecies(
+  farmId: number,
+  speciesId: number
+): Promise<AnimalRow[]> {
+  const db = await getDb();
+  return plainRows<AnimalRow>(
+    await db`
+      SELECT * FROM animals
+      WHERE farm_id = ${farmId} AND species_id = ${speciesId} AND status = 'active'
+      ORDER BY tag
+    `
+  );
+}
+
+export async function listBreedingRecords(farmId: number): Promise<BreedingRecordRow[]> {
+  const db = await getDb();
+  return plainRows<BreedingRecordRow>(
+    await db`SELECT * FROM breeding_records WHERE farm_id = ${farmId} ORDER BY bred_date DESC, id DESC`
+  );
+}
+
+export async function getBreedingRecord(
+  id: number,
+  farmId: number
+): Promise<BreedingRecordRow | undefined> {
+  const db = await getDb();
+  const rows = await db`SELECT * FROM breeding_records WHERE id = ${id} AND farm_id = ${farmId}`;
+  return plainRow<BreedingRecordRow>(rows[0]);
+}
+
+export async function listIncubationBatches(farmId: number): Promise<IncubationBatchRow[]> {
+  const db = await getDb();
+  return plainRows<IncubationBatchRow>(
+    await db`SELECT * FROM incubation_batches WHERE farm_id = ${farmId} ORDER BY start_date DESC, id DESC`
+  );
+}
+
+export async function getIncubationBatch(
+  id: number,
+  farmId: number
+): Promise<IncubationBatchRow | undefined> {
+  const db = await getDb();
+  const rows = await db`SELECT * FROM incubation_batches WHERE id = ${id} AND farm_id = ${farmId}`;
+  return plainRow<IncubationBatchRow>(rows[0]);
+}
+
+export interface BreedingAlert {
+  key: string;
+  kind: "birth" | "hatch";
+  label: string;
+  dueDate: string;
+  href: string;
+}
+
+// Unions upcoming expected due-dates (mammal) and expected hatch-dates
+// (poultry) into one alert source for the dashboard, same withinDays
+// window as listUpcomingTasks/listUpcomingMedical.
+export async function listUpcomingBreedingEvents(
+  farmId: number,
+  withinDays = 7
+): Promise<BreedingAlert[]> {
+  const db = await getDb();
+  const cutoff = new Date(Date.now() + withinDays * 86400000)
+    .toISOString()
+    .slice(0, 10);
+
+  const [dueRows, hatchRows] = await Promise.all([
+    db`
+      SELECT id, dam_label, expected_due_date FROM breeding_records
+      WHERE farm_id = ${farmId} AND status IN ('bred','confirmed_pregnant')
+        AND expected_due_date IS NOT NULL AND expected_due_date <= ${cutoff}
+      ORDER BY expected_due_date ASC
+    `,
+    db`
+      SELECT id, expected_hatch_date FROM incubation_batches
+      WHERE farm_id = ${farmId} AND status = 'incubating'
+        AND expected_hatch_date IS NOT NULL AND expected_hatch_date <= ${cutoff}
+      ORDER BY expected_hatch_date ASC
+    `,
+  ]);
+
+  const dueAlerts: BreedingAlert[] = (
+    dueRows as { id: number; dam_label: string | null; expected_due_date: string }[]
+  ).map((r) => ({
+    key: `breeding-${r.id}`,
+    kind: "birth",
+    label: r.dam_label || `#${r.id}`,
+    dueDate: r.expected_due_date,
+    href: `/breeding/${r.id}`,
+  }));
+  const hatchAlerts: BreedingAlert[] = (
+    hatchRows as { id: number; expected_hatch_date: string }[]
+  ).map((r) => ({
+    key: `incubation-${r.id}`,
+    kind: "hatch",
+    label: `#${r.id}`,
+    dueDate: r.expected_hatch_date,
+    href: `/breeding/incubation/${r.id}`,
+  }));
+  return [...dueAlerts, ...hatchAlerts].sort((a, b) => a.dueDate.localeCompare(b.dueDate));
 }
 
 export async function listWeightsForAnimal(

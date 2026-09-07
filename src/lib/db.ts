@@ -32,6 +32,7 @@ async function seedSpecies() {
     { key: "fish", name_en: "Fish", name_bn: "মাছ", unit_en: "kg", unit_bn: "কেজি", icon: "🐟", sort_order: 4 },
     { key: "vegetable", name_en: "Vegetable", name_bn: "সবজি", unit_en: "kg", unit_bn: "কেজি", icon: "🥬", sort_order: 5 },
     { key: "cow", name_en: "Cow", name_bn: "গরু", unit_en: "head", unit_bn: "টি", icon: "🐄", sort_order: 6 },
+    { key: "goat_sheep", name_en: "Goat / Sheep", name_bn: "ছাগল / ভেড়া", unit_en: "head", unit_bn: "টি", icon: "🐐", sort_order: 7 },
   ];
 
   for (const s of species) {
@@ -115,6 +116,19 @@ async function backfillCategoryDefaults() {
   }
 }
 
+// seedSpecies() only runs against a fully empty species table (fresh
+// installs), so a species added after go-live needs its own idempotent
+// backfill -- ON CONFLICT (key) DO NOTHING makes this safe to re-run on
+// every cold start. Not enabled for any farm by default; the owner turns
+// it on the same way as any species, via Business Types on /farm.
+async function backfillNewSpecies() {
+  await sql`
+    INSERT INTO species (key, name_en, name_bn, unit_en, unit_bn, icon, sort_order)
+    VALUES ('goat_sheep', 'Goat / Sheep', 'ছাগল / ভেড়া', 'head', 'টি', '🐐', 7)
+    ON CONFLICT (key) DO NOTHING
+  `;
+}
+
 async function ensureSchema(): Promise<void> {
   for (const statement of SCHEMA_STATEMENTS) {
     await sql.query(statement);
@@ -123,6 +137,7 @@ async function ensureSchema(): Promise<void> {
   await seedDefaultFarmAndOwner();
   await backfillOwnerPartners();
   await backfillCategoryDefaults();
+  await backfillNewSpecies();
 }
 
 export async function getDb() {

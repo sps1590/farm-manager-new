@@ -343,6 +343,51 @@ export interface AnimalWeightRow {
   created_at: string;
 }
 
+export type BreedingMethod = "natural" | "ai";
+export type BreedingStatus =
+  | "bred"
+  | "confirmed_pregnant"
+  | "not_pregnant"
+  | "birthed"
+  | "lost";
+
+export interface BreedingRecordRow {
+  id: number;
+  species_id: number;
+  batch_id: number | null;
+  dam_animal_id: number | null;
+  dam_label: string | null;
+  sire_label: string | null;
+  method: BreedingMethod;
+  bred_date: string;
+  expected_due_date: string | null;
+  status: BreedingStatus;
+  birth_date: string | null;
+  offspring_count: number | null;
+  notes: string | null;
+  created_by: number | null;
+  created_at: string;
+}
+
+export type IncubationMethod = "broody" | "incubator";
+export type IncubationStatus = "incubating" | "hatched" | "failed";
+
+export interface IncubationBatchRow {
+  id: number;
+  species_id: number;
+  batch_id: number | null;
+  method: IncubationMethod;
+  egg_count: number | null;
+  start_date: string;
+  expected_hatch_date: string | null;
+  status: IncubationStatus;
+  hatch_date: string | null;
+  hatched_count: number | null;
+  notes: string | null;
+  created_by: number | null;
+  created_at: string;
+}
+
 export interface AttachmentRow {
   id: number;
   related_table: string;

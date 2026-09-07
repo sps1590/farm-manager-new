@@ -5,6 +5,7 @@ import {
   listUpcomingMedical,
   listPendingSalaryAlerts,
   listUpcomingTasks,
+  listUpcomingBreedingEvents,
   recentActivity,
   listSpecies,
   listPartners,
@@ -23,6 +24,7 @@ export default async function DashboardPage() {
     upcoming,
     salaryAlerts,
     taskAlerts,
+    breedingAlerts,
     activity,
     speciesList,
     ownerPartners,
@@ -33,6 +35,7 @@ export default async function DashboardPage() {
     listUpcomingMedical(user.farm_id, 14),
     user.role === "owner" ? listPendingSalaryAlerts(user.farm_id) : Promise.resolve([]),
     listUpcomingTasks(user.farm_id, user.id, user.role === "owner"),
+    listUpcomingBreedingEvents(user.farm_id),
     recentActivity(user.farm_id, 8),
     listSpecies(),
     user.role === "owner" ? listPartners(user.farm_id) : Promise.resolve(null),
@@ -61,6 +64,13 @@ export default async function DashboardPage() {
       label: task.title,
       meta: task.due_date,
       href: "/tasks",
+    })),
+    ...breedingAlerts.map((b) => ({
+      key: b.key,
+      icon: b.kind === "birth" ? "🐣" : "🥚",
+      label: b.label,
+      meta: b.dueDate,
+      href: b.href,
     })),
   ];
 
