@@ -358,4 +358,26 @@ export const SCHEMA_STATEMENTS: string[] = [
     created_at TEXT NOT NULL DEFAULT ${NOW_TEXT}
   )`,
   `CREATE INDEX IF NOT EXISTS idx_attachments_related ON attachments(farm_id, related_table, related_id)`,
+
+  // Tier 2: task & reminder engine. Not part of the configurable
+  // permission matrix (owner manages the list; an assignee just acts on
+  // what's theirs) -- see completeTaskAction in src/lib/actions/tasks.ts.
+  // A recurring task's next occurrence is inserted synchronously when the
+  // current one is completed, no cron job.
+  `CREATE TABLE IF NOT EXISTS tasks (
+    id SERIAL PRIMARY KEY,
+    farm_id INTEGER NOT NULL REFERENCES farms(id) ON DELETE CASCADE,
+    title TEXT NOT NULL,
+    description TEXT,
+    assigned_to INTEGER REFERENCES users(id) ON DELETE SET NULL,
+    due_date TEXT NOT NULL,
+    recurrence TEXT NOT NULL DEFAULT 'none' CHECK(recurrence IN ('none','daily','weekly','monthly')),
+    status TEXT NOT NULL DEFAULT 'pending' CHECK(status IN ('pending','done')),
+    completed_at TEXT,
+    created_by INTEGER REFERENCES users(id),
+    created_at TEXT NOT NULL DEFAULT ${NOW_TEXT}
+  )`,
+  `CREATE INDEX IF NOT EXISTS idx_tasks_farm ON tasks(farm_id)`,
+  `CREATE INDEX IF NOT EXISTS idx_tasks_due ON tasks(due_date)`,
+  `CREATE INDEX IF NOT EXISTS idx_tasks_assigned ON tasks(assigned_to)`,
 ];

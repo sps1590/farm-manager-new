@@ -20,6 +20,8 @@ import {
   type SaleRow,
   type SalaryPaymentRow,
   type SpeciesRow,
+  type TaskRow,
+  type TaskStatus,
   type TeamMemberRow,
 } from "./types";
 
@@ -744,6 +746,64 @@ export async function getAsset(
   const db = await getDb();
   const rows = await db`SELECT * FROM assets WHERE id = ${id} AND farm_id = ${farmId}`;
   return plainRow<AssetRow>(rows[0]);
+}
+
+export async function listTasks(
+  farmId: number,
+  status?: TaskStatus
+): Promise<TaskRow[]> {
+  const db = await getDb();
+  const rows = status
+    ? await db`
+        SELECT t.*, u.name as assigned_to_name FROM tasks t
+        LEFT JOIN users u ON u.id = t.assigned_to
+        WHERE t.farm_id = ${farmId} AND t.status = ${status}
+        ORDER BY t.due_date ASC, t.id DESC
+      `
+    : await db`
+        SELECT t.*, u.name as assigned_to_name FROM tasks t
+        LEFT JOIN users u ON u.id = t.assigned_to
+        WHERE t.farm_id = ${farmId}
+        ORDER BY t.due_date ASC, t.id DESC
+      `;
+  return plainRows<TaskRow>(rows);
+}
+
+export async function getTask(id: number, farmId: number): Promise<TaskRow | undefined> {
+  const db = await getDb();
+  const rows = await db`SELECT * FROM tasks WHERE id = ${id} AND farm_id = ${farmId}`;
+  return plainRow<TaskRow>(rows[0]);
+}
+
+// Overdue-or-due-soon pending tasks for the dashboard alerts strip. The
+// owner sees every such task; anyone else sees only what's assigned to
+// them (mirrors the salary-alerts owner-only split, but per-assignee here
+// instead of owner-only).
+export async function listUpcomingTasks(
+  farmId: number,
+  userId: number,
+  isOwner: boolean,
+  withinDays = 7
+): Promise<TaskRow[]> {
+  const db = await getDb();
+  const cutoff = new Date(Date.now() + withinDays * 86400000)
+    .toISOString()
+    .slice(0, 10);
+  const rows = isOwner
+    ? await db`
+        SELECT t.*, u.name as assigned_to_name FROM tasks t
+        LEFT JOIN users u ON u.id = t.assigned_to
+        WHERE t.farm_id = ${farmId} AND t.status = 'pending' AND t.due_date <= ${cutoff}
+        ORDER BY t.due_date ASC
+      `
+    : await db`
+        SELECT t.*, u.name as assigned_to_name FROM tasks t
+        LEFT JOIN users u ON u.id = t.assigned_to
+        WHERE t.farm_id = ${farmId} AND t.status = 'pending' AND t.due_date <= ${cutoff}
+          AND t.assigned_to = ${userId}
+        ORDER BY t.due_date ASC
+      `;
+  return plainRows<TaskRow>(rows);
 }
 
 export async function listAuditLog(

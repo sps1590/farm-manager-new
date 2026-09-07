@@ -278,6 +278,23 @@ export interface CategoryRow {
   sort_order: number;
 }
 
+export type TaskRecurrence = "none" | "daily" | "weekly" | "monthly";
+export type TaskStatus = "pending" | "done";
+
+export interface TaskRow {
+  id: number;
+  title: string;
+  description: string | null;
+  assigned_to: number | null;
+  assigned_to_name?: string | null;
+  due_date: string;
+  recurrence: TaskRecurrence;
+  status: TaskStatus;
+  completed_at: string | null;
+  created_by: number | null;
+  created_at: string;
+}
+
 export interface AttachmentRow {
   id: number;
   related_table: string;

@@ -305,6 +305,22 @@ ToR gap-analysis Tier 1 scope)
   no-orphaned-data discipline as the batch-stock-reversal fixes earlier in
   this build.
 
+**Task & reminder engine** (done 2026-09-07, Tier 2 item 1 — first item
+from the iFARM ToR gap-analysis Tier 2, picked by the owner)
+- `/tasks` (visible to every team member, not owner-gated — this isn't
+  part of the configurable permission matrix): title, description,
+  assignee (any team member or unassigned), due date, and an optional
+  repeat (daily/weekly/monthly). Owner creates and deletes tasks; a task's
+  own assignee (or the owner) can mark it done. Filterable by
+  pending/done/all.
+- Completing a recurring task inserts the next occurrence synchronously
+  (`due_date` advanced by the recurrence interval) — no cron job, matching
+  the rest of this app having no background jobs anywhere.
+- Dashboard's Alerts card gained a third source alongside vaccinations and
+  pending salary: overdue/due-within-7-days pending tasks. The owner sees
+  every such task; anyone else sees only tasks assigned to them
+  (`listUpcomingTasks()` in `src/lib/repo.ts`).
+
 ## What's NOT built yet — future phases
 
 **Phase 2 — people and money** (done as of 2026-09-02 — see HR and
@@ -367,6 +383,12 @@ Database: Neon Postgres, provisioned through Vercel's Storage integration.
 
 ## Changelog
 
+- **2026-09-07** — Tier 2, item 1: task & reminder engine. New `/tasks`
+  module (visible to all team members) generalizes the vaccination
+  due-date pattern into assignable, trackable, optionally-recurring jobs.
+  Completing a recurring task auto-creates its next occurrence. Dashboard
+  alerts now include overdue/due-soon tasks alongside vaccinations and
+  pending salary payments.
 - **2026-09-07** — Tier 1, item 6: file attachments — completes the Tier 1
   scope from the iFARM ToR gap-analysis build plan. New `attachments` table
   (polymorphic, backed by Vercel Blob) lets a purchase, sale, or medical

@@ -16,6 +16,7 @@ import {
   Scale,
   History,
   Boxes,
+  ListChecks,
   LogOut,
   type LucideIcon,
 } from "lucide-react";
@@ -36,7 +37,8 @@ export type NavIconKey =
   | "ledger"
   | "farmProfile"
   | "audit"
-  | "assets";
+  | "assets"
+  | "tasks";
 
 const ICONS: Record<NavIconKey, LucideIcon> = {
   dashboard: LayoutDashboard,
@@ -52,6 +54,7 @@ const ICONS: Record<NavIconKey, LucideIcon> = {
   farmProfile: Sprout,
   audit: History,
   assets: Boxes,
+  tasks: ListChecks,
 };
 
 export interface SidebarNavItem {

@@ -4,6 +4,7 @@ import {
   dashboardSummary,
   listUpcomingMedical,
   listPendingSalaryAlerts,
+  listUpcomingTasks,
   recentActivity,
   listSpecies,
   listPartners,
@@ -21,6 +22,7 @@ export default async function DashboardPage() {
     summary,
     upcoming,
     salaryAlerts,
+    taskAlerts,
     activity,
     speciesList,
     ownerPartners,
@@ -30,6 +32,7 @@ export default async function DashboardPage() {
     dashboardSummary(user.farm_id),
     listUpcomingMedical(user.farm_id, 14),
     user.role === "owner" ? listPendingSalaryAlerts(user.farm_id) : Promise.resolve([]),
+    listUpcomingTasks(user.farm_id, user.id, user.role === "owner"),
     recentActivity(user.farm_id, 8),
     listSpecies(),
     user.role === "owner" ? listPartners(user.farm_id) : Promise.resolve(null),
@@ -51,6 +54,13 @@ export default async function DashboardPage() {
       label: `${s.employee_name} — ${s.pay_period}`,
       meta: `${t(lang, "common.currency")}${formatCurrency(s.amount)}`,
       href: `/employees/${s.employee_id}`,
+    })),
+    ...taskAlerts.map((task) => ({
+      key: `task-${task.id}`,
+      icon: "📋",
+      label: task.title,
+      meta: task.due_date,
+      href: "/tasks",
     })),
   ];
 
