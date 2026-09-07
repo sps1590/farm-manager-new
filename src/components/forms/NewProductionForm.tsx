@@ -67,8 +67,13 @@ export default function NewProductionForm({
             className="input"
             value={speciesId}
             onChange={(e) => {
-              setSpeciesId(e.target.value);
-              setProductType("");
+              const newSpeciesId = e.target.value;
+              setSpeciesId(newSpeciesId);
+              const newSpecies = newSpeciesId ? speciesById[Number(newSpeciesId)] : undefined;
+              const newPresetTypes = newSpecies
+                ? PRODUCTION_TYPES_BY_SPECIES_KEY[newSpecies.key]
+                : undefined;
+              setProductType(newPresetTypes ? newPresetTypes[0] : "");
             }}
           >
             <option value="">{t(lang, "common.none")}</option>
@@ -86,7 +91,15 @@ export default function NewProductionForm({
             </label>
             <button
               type="button"
-              onClick={() => setCustomType((v) => !v)}
+              onClick={() => {
+                setCustomType((v) => {
+                  const next = !v;
+                  if (!next && presetTypes && !presetTypes.includes(productType)) {
+                    setProductType(presetTypes[0]);
+                  }
+                  return next;
+                });
+              }}
               className="text-xs text-primary hover:underline"
             >
               {customType ? t(lang, "production.usePreset") : t(lang, "production.useCustom")}
