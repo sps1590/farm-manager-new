@@ -12,6 +12,7 @@ import {
   insertAttachment,
   deleteAttachmentsFor,
 } from "../attachments";
+import { postJournalEntry, reverseJournalEntry, LEDGER_ACCOUNT_KEYS } from "../ledger";
 import type { FormState } from "./batches";
 
 export async function createSaleAction(
@@ -117,9 +118,23 @@ export async function createSaleAction(
     `;
   }
 
+  await postJournalEntry({
+    farmId: user.farm_id,
+    entryDate: saleDate,
+    description: `Sale: ${itemName}`,
+    source: "sale",
+    sourceId: saleId,
+    userId: user.id,
+    lines: [
+      { accountKey: LEDGER_ACCOUNT_KEYS.CASH, debit: totalAmount },
+      { accountKey: LEDGER_ACCOUNT_KEYS.SALES_INCOME, credit: totalAmount, memo: incomeHead },
+    ],
+  });
+
   revalidatePath("/sales");
   revalidatePath("/dashboard");
   revalidatePath("/batches");
+  revalidatePath("/accounting");
   redirect("/sales");
 }
 
@@ -137,6 +152,7 @@ export async function deleteSaleAction(formData: FormData) {
 
   await db`DELETE FROM sales WHERE id = ${id} AND farm_id = ${user.farm_id}`;
   await deleteAttachmentsFor(user.farm_id, "sales", id);
+  await reverseJournalEntry(user.farm_id, "sale", id);
 
   // A sale decreased the linked batch's stock on create -- deleting it
   // must restore that stock, or the batch count silently drifts.
@@ -163,4 +179,5 @@ export async function deleteSaleAction(formData: FormData) {
   revalidatePath("/sales");
   revalidatePath("/dashboard");
   revalidatePath("/batches");
+  revalidatePath("/accounting");
 }

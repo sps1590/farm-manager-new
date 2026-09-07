@@ -402,6 +402,42 @@ owner: cattle, goat/sheep, duck, and chicken)
   animal record), same deliberate non-integration as Production recording
   not touching Sales/stock.
 
+**Double-entry accounting ledger** (done 2026-09-08, Tier 3 item 2 — the
+owner explicitly chose auto-posting and a core-only scope, deferring
+period-locking/year-end close)
+- New `accounts` (chart of accounts, farm-scoped, same shape as
+  `expense_categories`/`income_heads`), `journal_entries`, and
+  `journal_lines` tables. Six accounts are seeded per farm and are what
+  auto-posting always targets by stable key (`cash`, `partner_capital`,
+  `retained_earnings`, `sales_income`, `operating_expenses`,
+  `payroll_expense`) — `src/lib/ledger.ts`'s `postJournalEntry()`/
+  `reverseJournalEntry()` are the only way entries get created or removed.
+- **Auto-posts from all four existing money-moving actions**: Purchases
+  and Sales post/reverse on create/delete; salary payments post only when
+  actually marked paid (at creation-as-paid or at the pending→paid
+  transition) and reverse on delete; partner contributions/withdrawals
+  post/reverse the same way. Every entry balances (debits = credits),
+  enforced in `postJournalEntry()`.
+- **One-time backfill** for the farm's pre-existing purchases/sales/paid
+  salary payments/partner investments, so the trial balance reflects real
+  history from day one, not just transactions from the deploy date
+  forward (guarded — runs once per farm, never touches entries the app
+  posts afterward).
+- `/accounting` (trial balance, date-range filterable), `/accounting
+  /accounts` (chart of accounts manager — owner can add more accounts for
+  manual entries), `/accounting/accounts/[id]` (one account's ledger with
+  running balance), `/accounting/journal` (every entry, auto and manual,
+  plus a manual-entry form with dynamic lines that must balance before
+  submitting). Owner-only, no new permission-matrix module.
+- **This is additive and parallel** — `getFinancialSummary()`, `/reports`,
+  `/ledger`, and Partnership profit-share are completely unchanged and
+  remain the app's existing money-total calculations; the ledger is a
+  second, formal double-entry view over the same underlying transactions.
+- **Explicitly out of scope**: period-locking (blocking edits before a
+  locked date) and year-end close (closing entries into Retained
+  Earnings) — the `retained_earnings` account exists structurally but
+  nothing posts to it yet. A separately-scoped follow-on if wanted.
+
 ## What's NOT built yet — future phases
 
 **Phase 2 — people and money** (done as of 2026-09-02 — see HR and
@@ -464,6 +500,15 @@ Database: Neon Postgres, provisioned through Vercel's Storage integration.
 
 ## Changelog
 
+- **2026-09-08** — Tier 3, item 2: double-entry accounting ledger. New
+  `accounts`/`journal_entries`/`journal_lines` tables, auto-posting wired
+  into Purchases, Sales, Salary Payments (on paid) and Partner
+  Investments (create + delete/reverse), a one-time backfill of existing
+  historical transactions, and a new owner-only `/accounting` section
+  (trial balance, chart of accounts, journal, per-account ledger).
+  Additive and parallel to the existing Reports/Ledger/Partnership money
+  calculations, which are unchanged. Period-locking and year-end close
+  are deferred.
 - **2026-09-07** — Tier 3, item 1: breeding & incubation tracking (cattle,
   goat/sheep, duck, chicken — scoped directly by the owner from the ToR
   gap-analysis Tier 3 list). Added Goat/Sheep as a new species (idempotent

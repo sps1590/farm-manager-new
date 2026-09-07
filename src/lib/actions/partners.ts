@@ -7,6 +7,7 @@ import bcrypt from "bcryptjs";
 import { getDb } from "../db";
 import { requireOwner } from "../permissions";
 import { logAudit } from "../audit";
+import { postJournalEntry, reverseJournalEntry, LEDGER_ACCOUNT_KEYS } from "../ledger";
 
 export interface PartnerFormState {
   error?: string;
@@ -115,12 +116,13 @@ export async function addInvestmentEntryAction(
   const { partnerId, entryType, amount, entryDate, notes } = parsed.data;
 
   const target = await db`
-    SELECT id FROM users
+    SELECT id, name FROM users
     WHERE id = ${partnerId} AND farm_id = ${owner.farm_id} AND is_partner = true
   `;
   if (target.length === 0) {
     return { error: "partners.error.notFound" };
   }
+  const partnerName = (target[0] as { name: string }).name;
 
   const inserted = await db`
     INSERT INTO partner_investments (farm_id, user_id, entry_type, amount, entry_date, notes, created_by)
@@ -139,9 +141,29 @@ export async function addInvestmentEntryAction(
     after: { partnerId, entryType, amount, entryDate },
   });
 
+  await postJournalEntry({
+    farmId: owner.farm_id,
+    entryDate,
+    description: `Partner ${entryType}: ${partnerName}`,
+    source: "partner",
+    sourceId: entryId,
+    userId: owner.id,
+    lines:
+      entryType === "contribution"
+        ? [
+            { accountKey: LEDGER_ACCOUNT_KEYS.CASH, debit: amount },
+            { accountKey: LEDGER_ACCOUNT_KEYS.PARTNER_CAPITAL, credit: amount },
+          ]
+        : [
+            { accountKey: LEDGER_ACCOUNT_KEYS.PARTNER_CAPITAL, debit: amount },
+            { accountKey: LEDGER_ACCOUNT_KEYS.CASH, credit: amount },
+          ],
+  });
+
   revalidatePath(`/partners/${partnerId}`);
   revalidatePath("/partners");
   revalidatePath("/dashboard");
+  revalidatePath("/accounting");
   return {};
 }
 
@@ -155,6 +177,7 @@ export async function deleteInvestmentEntryAction(formData: FormData) {
   `;
   const entry = rows[0] as { entry_type: string; amount: number } | undefined;
   await db`DELETE FROM partner_investments WHERE id = ${id} AND farm_id = ${owner.farm_id}`;
+  await reverseJournalEntry(owner.farm_id, "partner", id);
   if (entry) {
     await logAudit({
       farmId: owner.farm_id,
@@ -169,6 +192,7 @@ export async function deleteInvestmentEntryAction(formData: FormData) {
   revalidatePath(`/partners/${partnerId}`);
   revalidatePath("/partners");
   revalidatePath("/dashboard");
+  revalidatePath("/accounting");
 }
 
 // Manually setting a share % switches that partner out of auto-sync --

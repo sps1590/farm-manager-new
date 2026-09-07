@@ -12,6 +12,7 @@ import {
   insertAttachment,
   deleteAttachmentsFor,
 } from "../attachments";
+import { postJournalEntry, reverseJournalEntry, LEDGER_ACCOUNT_KEYS } from "../ledger";
 import type { FormState } from "./batches";
 
 export async function createPurchaseAction(
@@ -118,9 +119,23 @@ export async function createPurchaseAction(
     `;
   }
 
+  await postJournalEntry({
+    farmId: user.farm_id,
+    entryDate: purchaseDate,
+    description: `Purchase: ${itemName}`,
+    source: "purchase",
+    sourceId: purchaseId,
+    userId: user.id,
+    lines: [
+      { accountKey: LEDGER_ACCOUNT_KEYS.OPERATING_EXPENSES, debit: totalAmount, memo: category },
+      { accountKey: LEDGER_ACCOUNT_KEYS.CASH, credit: totalAmount },
+    ],
+  });
+
   revalidatePath("/purchases");
   revalidatePath("/dashboard");
   revalidatePath("/batches");
+  revalidatePath("/accounting");
   redirect("/purchases");
 }
 
@@ -144,6 +159,7 @@ export async function deletePurchaseAction(formData: FormData) {
 
   await db`DELETE FROM purchases WHERE id = ${id} AND farm_id = ${user.farm_id}`;
   await deleteAttachmentsFor(user.farm_id, "purchases", id);
+  await reverseJournalEntry(user.farm_id, "purchase", id);
 
   // An "animal" purchase increased the linked batch's stock on create --
   // deleting it must reverse that, or the batch count silently drifts.
@@ -170,4 +186,5 @@ export async function deletePurchaseAction(formData: FormData) {
   revalidatePath("/purchases");
   revalidatePath("/dashboard");
   revalidatePath("/batches");
+  revalidatePath("/accounting");
 }

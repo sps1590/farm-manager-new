@@ -19,6 +19,7 @@ import {
   ListChecks,
   Egg,
   Baby,
+  Calculator,
   LogOut,
   type LucideIcon,
 } from "lucide-react";
@@ -42,7 +43,8 @@ export type NavIconKey =
   | "assets"
   | "tasks"
   | "production"
-  | "breeding";
+  | "breeding"
+  | "accounting";
 
 const ICONS: Record<NavIconKey, LucideIcon> = {
   dashboard: LayoutDashboard,
@@ -61,6 +63,7 @@ const ICONS: Record<NavIconKey, LucideIcon> = {
   tasks: ListChecks,
   production: Egg,
   breeding: Baby,
+  accounting: Calculator,
 };
 
 export interface SidebarNavItem {

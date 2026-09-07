@@ -388,6 +388,50 @@ export interface IncubationBatchRow {
   created_at: string;
 }
 
+export type AccountType = "asset" | "liability" | "equity" | "income" | "expense";
+export type AccountStatus = "active" | "inactive";
+
+export interface AccountRow {
+  id: number;
+  key: string;
+  code: string;
+  name_en: string;
+  name_bn: string;
+  type: AccountType;
+  status: AccountStatus;
+  sort_order: number;
+  created_at: string;
+}
+
+export type JournalSource = "manual" | "purchase" | "sale" | "salary" | "partner";
+
+export interface JournalEntryRow {
+  id: number;
+  entry_date: string;
+  description: string;
+  source: JournalSource;
+  source_id: number | null;
+  created_by: number | null;
+  created_at: string;
+}
+
+export interface JournalLineRow {
+  id: number;
+  journal_entry_id: number;
+  account_id: number;
+  debit: number;
+  credit: number;
+  memo: string | null;
+  created_at: string;
+}
+
+export interface TrialBalanceRow {
+  account: AccountRow;
+  totalDebit: number;
+  totalCredit: number;
+  balance: number;
+}
+
 export interface AttachmentRow {
   id: number;
   related_table: string;

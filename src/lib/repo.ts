@@ -19,12 +19,16 @@ import {
   type PurchaseRow,
   type SaleRow,
   type SalaryPaymentRow,
+  type AccountRow,
   type AnimalRow,
   type AnimalWeightRow,
   type AnimalWithLatestWeight,
   type BreedingRecordRow,
   type IncubationBatchRow,
+  type JournalEntryRow,
+  type JournalLineRow,
   type ProductionRecordRow,
+  type TrialBalanceRow,
   type SpeciesRow,
   type TaskRow,
   type TaskStatus,
@@ -1019,4 +1023,145 @@ export async function listAuditLog(
       LIMIT ${limit}
     `
   );
+}
+
+export async function listAccounts(
+  farmId: number,
+  activeOnly = false
+): Promise<AccountRow[]> {
+  const db = await getDb();
+  const rows = activeOnly
+    ? await db`SELECT * FROM accounts WHERE farm_id = ${farmId} AND status = 'active' ORDER BY sort_order, code`
+    : await db`SELECT * FROM accounts WHERE farm_id = ${farmId} ORDER BY sort_order, code`;
+  return plainRows<AccountRow>(rows);
+}
+
+export async function getAccount(id: number, farmId: number): Promise<AccountRow | undefined> {
+  const db = await getDb();
+  const rows = await db`SELECT * FROM accounts WHERE id = ${id} AND farm_id = ${farmId}`;
+  return plainRow<AccountRow>(rows[0]);
+}
+
+export async function listJournalEntries(
+  farmId: number,
+  range?: DateRange
+): Promise<JournalEntryRow[]> {
+  const db = await getDb();
+  const from = range?.from ?? "0001-01-01";
+  const to = range?.to ?? "9999-12-31";
+  return plainRows<JournalEntryRow>(
+    await db`
+      SELECT * FROM journal_entries
+      WHERE farm_id = ${farmId} AND entry_date >= ${from} AND entry_date <= ${to}
+      ORDER BY entry_date DESC, id DESC
+    `
+  );
+}
+
+export async function getJournalEntry(
+  id: number,
+  farmId: number
+): Promise<JournalEntryRow | undefined> {
+  const db = await getDb();
+  const rows = await db`SELECT * FROM journal_entries WHERE id = ${id} AND farm_id = ${farmId}`;
+  return plainRow<JournalEntryRow>(rows[0]);
+}
+
+export async function listLinesForEntry(
+  journalEntryId: number,
+  farmId: number
+): Promise<JournalLineRow[]> {
+  const db = await getDb();
+  return plainRows<JournalLineRow>(
+    await db`
+      SELECT * FROM journal_lines
+      WHERE journal_entry_id = ${journalEntryId} AND farm_id = ${farmId}
+      ORDER BY id
+    `
+  );
+}
+
+export interface AccountLedgerLine {
+  lineId: number;
+  entryId: number;
+  entryDate: string;
+  description: string;
+  source: string;
+  sourceId: number | null;
+  debit: number;
+  credit: number;
+  memo: string | null;
+}
+
+export async function listLinesForAccount(
+  accountId: number,
+  farmId: number
+): Promise<AccountLedgerLine[]> {
+  const db = await getDb();
+  const rows = await db`
+    SELECT jl.id as line_id, je.id as entry_id, je.entry_date, je.description, je.source, je.source_id,
+      jl.debit, jl.credit, jl.memo
+    FROM journal_lines jl
+    JOIN journal_entries je ON je.id = jl.journal_entry_id
+    WHERE jl.account_id = ${accountId} AND jl.farm_id = ${farmId}
+    ORDER BY je.entry_date ASC, je.id ASC
+  `;
+  return (
+    rows as {
+      line_id: number;
+      entry_id: number;
+      entry_date: string;
+      description: string;
+      source: string;
+      source_id: number | null;
+      debit: number;
+      credit: number;
+      memo: string | null;
+    }[]
+  ).map((r) => ({
+    lineId: r.line_id,
+    entryId: r.entry_id,
+    entryDate: r.entry_date,
+    description: r.description,
+    source: r.source,
+    sourceId: r.source_id,
+    debit: r.debit,
+    credit: r.credit,
+    memo: r.memo,
+  }));
+}
+
+const CREDIT_NORMAL_TYPES = new Set(["liability", "equity", "income"]);
+
+export async function getTrialBalance(
+  farmId: number,
+  range?: DateRange
+): Promise<TrialBalanceRow[]> {
+  const db = await getDb();
+  const from = range?.from ?? "0001-01-01";
+  const to = range?.to ?? "9999-12-31";
+  const accounts = await listAccounts(farmId);
+  const totals = await db`
+    SELECT jl.account_id, COALESCE(SUM(jl.debit),0) as total_debit, COALESCE(SUM(jl.credit),0) as total_credit
+    FROM journal_lines jl
+    JOIN journal_entries je ON je.id = jl.journal_entry_id
+    WHERE jl.farm_id = ${farmId} AND je.entry_date >= ${from} AND je.entry_date <= ${to}
+    GROUP BY jl.account_id
+  `;
+  const totalsByAccount = new Map(
+    (totals as { account_id: number; total_debit: number; total_credit: number }[]).map((t) => [
+      t.account_id,
+      t,
+    ])
+  );
+
+  return accounts.map((account) => {
+    const t = totalsByAccount.get(account.id);
+    const totalDebit = t?.total_debit ?? 0;
+    const totalCredit = t?.total_credit ?? 0;
+    const balance = CREDIT_NORMAL_TYPES.has(account.type)
+      ? totalCredit - totalDebit
+      : totalDebit - totalCredit;
+    return { account, totalDebit, totalCredit, balance };
+  });
 }

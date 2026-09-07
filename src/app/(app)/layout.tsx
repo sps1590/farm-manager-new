@@ -31,6 +31,7 @@ const OWNER_NAV_ITEMS: SidebarNavItem[] = [
   { href: "/assets", labelKey: "nav.assets", icon: "assets" },
   { href: "/reports", labelKey: "nav.reports", icon: "reports" },
   { href: "/ledger", labelKey: "nav.ledger", icon: "ledger" },
+  { href: "/accounting", labelKey: "nav.accounting", icon: "accounting" },
   { href: "/audit", labelKey: "nav.audit", icon: "audit" },
   { href: "/farm", labelKey: "nav.farmProfile", icon: "farmProfile" },
 ];

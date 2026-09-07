@@ -504,4 +504,59 @@ export const SCHEMA_STATEMENTS: string[] = [
   )`,
   `CREATE INDEX IF NOT EXISTS idx_incubation_farm ON incubation_batches(farm_id)`,
   `CREATE INDEX IF NOT EXISTS idx_incubation_hatch ON incubation_batches(expected_hatch_date)`,
+
+  // Tier 3: double-entry accounting ledger. Additive and parallel to
+  // getFinancialSummary()/reports/partnership -- this doesn't replace
+  // those, it's a second, formal view over the same underlying
+  // transactions. "key" is the stable value auto-posting looks accounts
+  // up by (never a hardcoded id), same shape as expense_categories/
+  // income_heads. Owner-only, no new permission-matrix module.
+  `CREATE TABLE IF NOT EXISTS accounts (
+    id SERIAL PRIMARY KEY,
+    farm_id INTEGER NOT NULL REFERENCES farms(id) ON DELETE CASCADE,
+    key TEXT NOT NULL,
+    code TEXT NOT NULL,
+    name_en TEXT NOT NULL,
+    name_bn TEXT NOT NULL,
+    type TEXT NOT NULL CHECK(type IN ('asset','liability','equity','income','expense')),
+    status TEXT NOT NULL DEFAULT 'active' CHECK(status IN ('active','inactive')),
+    sort_order INTEGER NOT NULL DEFAULT 0,
+    created_at TEXT NOT NULL DEFAULT ${NOW_TEXT},
+    UNIQUE(farm_id, key)
+  )`,
+  `CREATE INDEX IF NOT EXISTS idx_accounts_farm ON accounts(farm_id)`,
+
+  // source/source_id identify which Purchase/Sale/salary payment/partner
+  // investment an auto-posted entry came from, so deleting that record can
+  // find and reverse its entry (reverseJournalEntry() in src/lib/ledger.ts).
+  // source_id is null for manual entries.
+  `CREATE TABLE IF NOT EXISTS journal_entries (
+    id SERIAL PRIMARY KEY,
+    farm_id INTEGER NOT NULL REFERENCES farms(id) ON DELETE CASCADE,
+    entry_date TEXT NOT NULL,
+    description TEXT NOT NULL,
+    source TEXT NOT NULL DEFAULT 'manual' CHECK(source IN ('manual','purchase','sale','salary','partner')),
+    source_id INTEGER,
+    created_by INTEGER REFERENCES users(id),
+    created_at TEXT NOT NULL DEFAULT ${NOW_TEXT}
+  )`,
+  `CREATE INDEX IF NOT EXISTS idx_journal_entries_farm ON journal_entries(farm_id)`,
+  `CREATE INDEX IF NOT EXISTS idx_journal_entries_date ON journal_entries(entry_date)`,
+  `CREATE INDEX IF NOT EXISTS idx_journal_entries_source ON journal_entries(farm_id, source, source_id)`,
+
+  // A entry's lines must sum debits = credits -- enforced in
+  // postJournalEntry() (src/lib/ledger.ts), not a DB constraint, same as
+  // every other multi-row invariant in this app.
+  `CREATE TABLE IF NOT EXISTS journal_lines (
+    id SERIAL PRIMARY KEY,
+    farm_id INTEGER NOT NULL REFERENCES farms(id) ON DELETE CASCADE,
+    journal_entry_id INTEGER NOT NULL REFERENCES journal_entries(id) ON DELETE CASCADE,
+    account_id INTEGER NOT NULL REFERENCES accounts(id),
+    debit DOUBLE PRECISION NOT NULL DEFAULT 0,
+    credit DOUBLE PRECISION NOT NULL DEFAULT 0,
+    memo TEXT,
+    created_at TEXT NOT NULL DEFAULT ${NOW_TEXT}
+  )`,
+  `CREATE INDEX IF NOT EXISTS idx_journal_lines_entry ON journal_lines(journal_entry_id)`,
+  `CREATE INDEX IF NOT EXISTS idx_journal_lines_account ON journal_lines(account_id)`,
 ];

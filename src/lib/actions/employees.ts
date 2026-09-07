@@ -5,6 +5,7 @@ import { revalidatePath } from "next/cache";
 import { getDb } from "../db";
 import { requireOwner } from "../permissions";
 import { logAudit } from "../audit";
+import { postJournalEntry, reverseJournalEntry, LEDGER_ACCOUNT_KEYS } from "../ledger";
 import type { AttendanceStatus, LeaveType } from "../types";
 
 const ATTENDANCE_STATUSES: AttendanceStatus[] = [
@@ -157,11 +158,12 @@ export async function addSalaryPaymentAction(
   }
 
   const target = await db`
-    SELECT id FROM employees WHERE id = ${employeeId} AND farm_id = ${owner.farm_id}
+    SELECT id, name FROM employees WHERE id = ${employeeId} AND farm_id = ${owner.farm_id}
   `;
   if (target.length === 0) {
     return { error: "employees.error.notFound" };
   }
+  const employeeName = (target[0] as { name: string }).name;
 
   const inserted = await db`
     INSERT INTO salary_payments (farm_id, employee_id, amount, pay_period, status, paid_date, notes, created_by)
@@ -180,6 +182,22 @@ export async function addSalaryPaymentAction(
     after: { employeeId, amount, payPeriod, status, paidDate },
   });
 
+  if (status === "paid") {
+    await postJournalEntry({
+      farmId: owner.farm_id,
+      entryDate: paidDate ?? new Date().toISOString().slice(0, 10),
+      description: `Salary paid: ${employeeName} (${payPeriod})`,
+      source: "salary",
+      sourceId: paymentId,
+      userId: owner.id,
+      lines: [
+        { accountKey: LEDGER_ACCOUNT_KEYS.PAYROLL_EXPENSE, debit: amount },
+        { accountKey: LEDGER_ACCOUNT_KEYS.CASH, credit: amount },
+      ],
+    });
+    revalidatePath("/accounting");
+  }
+
   revalidatePath(`/employees/${employeeId}`);
   revalidatePath("/reports");
   return {};
@@ -191,6 +209,15 @@ export async function markSalaryPaymentPaidAction(formData: FormData) {
   const id = Number(formData.get("id"));
   const employeeId = Number(formData.get("employee_id"));
   const today = new Date().toISOString().slice(0, 10);
+
+  const rows = await db`
+    SELECT sp.amount, sp.pay_period, sp.status, e.name FROM salary_payments sp
+    JOIN employees e ON e.id = sp.employee_id
+    WHERE sp.id = ${id} AND sp.farm_id = ${owner.farm_id}
+  `;
+  const payment = rows[0] as
+    | { amount: number; pay_period: string; status: string; name: string }
+    | undefined;
 
   await db`
     UPDATE salary_payments SET status = 'paid', paid_date = COALESCE(paid_date, ${today})
@@ -205,6 +232,25 @@ export async function markSalaryPaymentPaidAction(formData: FormData) {
     summary: "Marked salary payment paid",
     after: { status: "paid", paidDate: today },
   });
+
+  // Guard against double-posting if this is somehow called on an already-
+  // paid payment (the UI only offers this action for pending ones).
+  if (payment && payment.status !== "paid") {
+    await postJournalEntry({
+      farmId: owner.farm_id,
+      entryDate: today,
+      description: `Salary paid: ${payment.name} (${payment.pay_period})`,
+      source: "salary",
+      sourceId: id,
+      userId: owner.id,
+      lines: [
+        { accountKey: LEDGER_ACCOUNT_KEYS.PAYROLL_EXPENSE, debit: payment.amount },
+        { accountKey: LEDGER_ACCOUNT_KEYS.CASH, credit: payment.amount },
+      ],
+    });
+    revalidatePath("/accounting");
+  }
+
   revalidatePath(`/employees/${employeeId}`);
   revalidatePath("/reports");
 }
@@ -219,6 +265,9 @@ export async function deleteSalaryPaymentAction(formData: FormData) {
   `;
   const payment = rows[0] as { amount: number; pay_period: string } | undefined;
   await db`DELETE FROM salary_payments WHERE id = ${id} AND farm_id = ${owner.farm_id}`;
+  // No-op if this payment was never marked paid (reverseJournalEntry only
+  // deletes an entry if one was actually posted for it).
+  await reverseJournalEntry(owner.farm_id, "salary", id);
   if (payment) {
     await logAudit({
       farmId: owner.farm_id,
@@ -232,6 +281,7 @@ export async function deleteSalaryPaymentAction(formData: FormData) {
   }
   revalidatePath(`/employees/${employeeId}`);
   revalidatePath("/reports");
+  revalidatePath("/accounting");
 }
 
 // One row per employee per day (UNIQUE(employee_id, date) in schema.ts) --
