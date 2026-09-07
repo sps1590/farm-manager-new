@@ -93,7 +93,13 @@ export default function NewBreedingForm({
 
   if (kind === "mammal") {
     return (
-      <form action={mammalAction} className="card space-y-4 p-6">
+      // key={speciesId} forces a full remount on any species change --
+      // without it React reconciles same-position <input> elements across
+      // different shapes (poultry vs mammal, or the dam-animal dropdown
+      // appearing/disappearing between mammal species) and can leak a
+      // controlled field's DOM value into an uncontrolled one it never
+      // touches (e.g. start_date -> sire_label).
+      <form key={speciesId} action={mammalAction} className="card space-y-4 p-6">
         <input type="hidden" name="species_id" value={speciesId} />
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
           {speciesSelect}
@@ -184,7 +190,7 @@ export default function NewBreedingForm({
   }
 
   return (
-    <form action={poultryAction} className="card space-y-4 p-6">
+    <form key={speciesId} action={poultryAction} className="card space-y-4 p-6">
       <input type="hidden" name="species_id" value={speciesId} />
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
         {speciesSelect}
