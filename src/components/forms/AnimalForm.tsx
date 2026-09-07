@@ -4,7 +4,7 @@ import { useActionState } from "react";
 import { createAnimalAction, type AnimalFormState } from "@/lib/actions/animals";
 import SubmitButton from "@/components/SubmitButton";
 import { t, type DictKey } from "@/lib/i18n";
-import type { Language } from "@/lib/types";
+import type { AnimalBreedRow, AnimalGroupRow, Language } from "@/lib/types";
 
 const initialState: AnimalFormState = {};
 const SEXES = ["unknown", "male", "female"] as const;
@@ -13,10 +13,14 @@ export default function AnimalForm({
   lang,
   batchId,
   speciesId,
+  breeds,
+  groups,
 }: {
   lang: Language;
   batchId: number;
   speciesId: number;
+  breeds: AnimalBreedRow[];
+  groups: AnimalGroupRow[];
 }) {
   const [state, formAction] = useActionState(createAnimalAction, initialState);
 
@@ -48,8 +52,26 @@ export default function AnimalForm({
       </label>
       <label className="text-sm">
         <span className="label">{t(lang, "animals.breed")}</span>
-        <input name="breed" className="input w-28" />
+        <input name="breed" list="breed-options" className="input w-28" />
+        <datalist id="breed-options">
+          {breeds.map((b) => (
+            <option key={b.id} value={b.name} />
+          ))}
+        </datalist>
       </label>
+      {groups.length > 0 && (
+        <label className="text-sm">
+          <span className="label">{t(lang, "animals.group")}</span>
+          <select name="group_id" className="input" defaultValue="">
+            <option value="">{t(lang, "common.none")}</option>
+            {groups.map((g) => (
+              <option key={g.id} value={g.id}>
+                {g.name}
+              </option>
+            ))}
+          </select>
+        </label>
+      )}
       <SubmitButton>{t(lang, "animals.add")}</SubmitButton>
       {state?.error && (
         <p className="w-full text-sm text-danger">{t(lang, state.error as DictKey)}</p>

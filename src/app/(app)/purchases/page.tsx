@@ -53,6 +53,7 @@ export default async function PurchasesPage() {
                 <th className="px-4 py-2 font-medium">{t(lang, "purchases.itemName")}</th>
                 <th className="px-4 py-2 font-medium">{t(lang, "common.species")}</th>
                 <th className="px-4 py-2 font-medium">{t(lang, "purchases.vendor")}</th>
+                <th className="px-4 py-2 font-medium">{t(lang, "common.receiptNumber")}</th>
                 <th className="px-4 py-2 font-medium text-right">
                   {t(lang, "common.totalAmount")}
                 </th>
@@ -74,6 +75,7 @@ export default async function PurchasesPage() {
                       {sp ? `${sp.icon} ${lang === "bn" ? sp.name_bn : sp.name_en}` : "—"}
                     </td>
                     <td className="px-4 py-2 text-muted">{p.vendor || "—"}</td>
+                    <td className="px-4 py-2 text-muted">{p.receipt_number || "—"}</td>
                     <td className="px-4 py-2 text-right font-medium">
                       {t(lang, "common.currency")}{formatCurrency(p.total_amount)}
                     </td>
@@ -105,7 +107,7 @@ export default async function PurchasesPage() {
             </tbody>
             <tfoot>
               <tr>
-                <td colSpan={5} className="px-4 py-2 text-right font-semibold text-foreground">
+                <td colSpan={6} className="px-4 py-2 text-right font-semibold text-foreground">
                   {t(lang, "common.totalAmount")}
                 </td>
                 <td className="px-4 py-2 text-right font-bold text-foreground">

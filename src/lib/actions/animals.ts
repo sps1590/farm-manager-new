@@ -28,6 +28,7 @@ export async function createAnimalAction(
   const sex = String(formData.get("sex") ?? "unknown") as AnimalSex;
   const birthDate = String(formData.get("birth_date") ?? "") || null;
   const breed = String(formData.get("breed") ?? "").trim() || null;
+  const groupId = formData.get("group_id") ? Number(formData.get("group_id")) : null;
 
   if (!tag) {
     return { error: "animals.error.tagRequired" };
@@ -44,8 +45,8 @@ export async function createAnimalAction(
   }
 
   const inserted = await db`
-    INSERT INTO animals (farm_id, batch_id, species_id, tag, name, sex, birth_date, breed, created_by)
-    VALUES (${user.farm_id}, ${batchId}, ${speciesId}, ${tag}, ${name}, ${sex}, ${birthDate}, ${breed}, ${user.id})
+    INSERT INTO animals (farm_id, batch_id, species_id, tag, name, sex, birth_date, breed, group_id, created_by)
+    VALUES (${user.farm_id}, ${batchId}, ${speciesId}, ${tag}, ${name}, ${sex}, ${birthDate}, ${breed}, ${groupId}, ${user.id})
     RETURNING id
   `;
   const animalId = (inserted[0] as { id: number }).id;

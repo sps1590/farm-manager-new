@@ -9,6 +9,8 @@ import {
   listMedicalByBatch,
   getIndividualTrackingSpeciesIds,
   listAnimalsByBatch,
+  listAnimalBreeds,
+  listAnimalGroups,
 } from "@/lib/repo";
 import { updateBatchStatusAction, deleteBatchAction } from "@/lib/actions/batches";
 import { t, type DictKey } from "@/lib/i18n";
@@ -39,9 +41,13 @@ export default async function BatchDetailPage({
     getIndividualTrackingSpeciesIds(user.farm_id),
   ]);
   const tracksIndividuals = trackingIds.has(batch.species_id);
-  const animals = tracksIndividuals
-    ? await listAnimalsByBatch(batchId, user.farm_id)
-    : [];
+  const [animals, breeds, groups] = tracksIndividuals
+    ? await Promise.all([
+        listAnimalsByBatch(batchId, user.farm_id),
+        listAnimalBreeds(user.farm_id, batch.species_id, true),
+        listAnimalGroups(user.farm_id, batch.species_id, true),
+      ])
+    : [[], [], []];
 
   return (
     <div className="space-y-6">
@@ -208,7 +214,13 @@ export default async function BatchDetailPage({
             </div>
           )}
           {canAddAnimal && (
-            <AnimalForm lang={lang} batchId={batch.id} speciesId={batch.species_id} />
+            <AnimalForm
+              lang={lang}
+              batchId={batch.id}
+              speciesId={batch.species_id}
+              breeds={breeds}
+              groups={groups}
+            />
           )}
         </div>
       )}

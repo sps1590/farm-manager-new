@@ -8,6 +8,8 @@ import {
   getIndividualTrackingSpeciesIds,
   listExpenseCategories,
   listIncomeHeads,
+  listAnimalBreeds,
+  listAnimalGroups,
 } from "@/lib/repo";
 import {
   updateFarmDetailsAction,
@@ -20,8 +22,15 @@ import {
   createIncomeHeadAction,
   toggleIncomeHeadStatusAction,
 } from "@/lib/actions/categories";
+import {
+  createAnimalBreedAction,
+  toggleAnimalBreedStatusAction,
+  createAnimalGroupAction,
+  toggleAnimalGroupStatusAction,
+} from "@/lib/actions/animalMasterData";
 import { t, type DictKey } from "@/lib/i18n";
 import CategoryManager from "@/components/forms/CategoryManager";
+import MasterDataManager from "@/components/forms/MasterDataManager";
 
 const SETUP_LINKS: Array<{ href: string; labelKey: DictKey; icon: LucideIcon }> = [
   { href: "/team", labelKey: "nav.team", icon: Users },
@@ -34,7 +43,7 @@ export default async function FarmProfilePage() {
   const owner = await requireOwner();
   const lang = owner.language;
 
-  const [farm, allSpecies, enabledIds, trackingIds, expenseCategories, incomeHeads] =
+  const [farm, allSpecies, enabledIds, trackingIds, expenseCategories, incomeHeads, breeds, groups] =
     await Promise.all([
       getFarm(owner.farm_id),
       listSpecies(),
@@ -42,8 +51,11 @@ export default async function FarmProfilePage() {
       getIndividualTrackingSpeciesIds(owner.farm_id),
       listExpenseCategories(owner.farm_id),
       listIncomeHeads(owner.farm_id),
+      listAnimalBreeds(owner.farm_id),
+      listAnimalGroups(owner.farm_id),
     ]);
   const enabledSpeciesList = allSpecies.filter((s) => enabledIds.has(s.id));
+  const trackedSpeciesList = enabledSpeciesList.filter((s) => trackingIds.has(s.id));
 
   return (
     <div className="space-y-6">
@@ -177,6 +189,48 @@ export default async function FarmProfilePage() {
           toggleAction={toggleIncomeHeadStatusAction}
         />
       </div>
+
+      {trackedSpeciesList.length > 0 && (
+        <div className="card space-y-6 p-6">
+          <div>
+            <h2 className="font-semibold text-foreground">{t(lang, "animals.breedsGroupsTitle")}</h2>
+            <p className="text-sm text-muted">{t(lang, "animals.breedsGroupsHint")}</p>
+          </div>
+          {trackedSpeciesList.map((s) => (
+            <div key={s.id} className="space-y-4 border-t border-border pt-4 first:border-0 first:pt-0">
+              <h3 className="font-medium text-foreground">
+                {s.icon} {lang === "bn" ? s.name_bn : s.name_en}
+              </h3>
+              <div className="grid grid-cols-1 gap-6 sm:grid-cols-2">
+                <div>
+                  <h4 className="mb-2 text-sm font-medium text-muted">{t(lang, "animals.breeds")}</h4>
+                  <MasterDataManager
+                    lang={lang}
+                    items={breeds.filter((b) => b.species_id === s.id)}
+                    speciesId={s.id}
+                    createAction={createAnimalBreedAction}
+                    toggleAction={toggleAnimalBreedStatusAction}
+                    nameLabel="animals.breedName"
+                    addLabel="animals.addBreed"
+                  />
+                </div>
+                <div>
+                  <h4 className="mb-2 text-sm font-medium text-muted">{t(lang, "animals.groups")}</h4>
+                  <MasterDataManager
+                    lang={lang}
+                    items={groups.filter((g) => g.species_id === s.id)}
+                    speciesId={s.id}
+                    createAction={createAnimalGroupAction}
+                    toggleAction={toggleAnimalGroupStatusAction}
+                    nameLabel="animals.groupName"
+                    addLabel="animals.addGroup"
+                  />
+                </div>
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
 
       <div>
         <h2 className="mb-2 font-semibold text-foreground">{t(lang, "farm.setup")}</h2>

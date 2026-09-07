@@ -50,6 +50,7 @@ export default async function SalesPage() {
                 <th className="px-4 py-2 font-medium">{t(lang, "sales.itemName")}</th>
                 <th className="px-4 py-2 font-medium">{t(lang, "common.species")}</th>
                 <th className="px-4 py-2 font-medium">{t(lang, "sales.buyer")}</th>
+                <th className="px-4 py-2 font-medium">{t(lang, "common.receiptNumber")}</th>
                 <th className="px-4 py-2 font-medium text-right">
                   {t(lang, "common.totalAmount")}
                 </th>
@@ -68,6 +69,7 @@ export default async function SalesPage() {
                       {sp ? `${sp.icon} ${lang === "bn" ? sp.name_bn : sp.name_en}` : "—"}
                     </td>
                     <td className="px-4 py-2 text-muted">{s.buyer || "—"}</td>
+                    <td className="px-4 py-2 text-muted">{s.receipt_number || "—"}</td>
                     <td className="px-4 py-2 text-right font-medium text-primary">
                       {t(lang, "common.currency")}{formatCurrency(s.total_amount)}
                     </td>
@@ -99,7 +101,7 @@ export default async function SalesPage() {
             </tbody>
             <tfoot>
               <tr>
-                <td colSpan={4} className="px-4 py-2 text-right font-semibold text-foreground">
+                <td colSpan={5} className="px-4 py-2 text-right font-semibold text-foreground">
                   {t(lang, "common.totalAmount")}
                 </td>
                 <td className="px-4 py-2 text-right font-bold text-primary">

@@ -222,6 +222,12 @@ export default function NewSaleForm({
             className="input"
           />
         </div>
+        <div key="receiptNumber">
+          <label className="label" htmlFor="receipt_number">
+            {t(lang, "common.receiptNumber")}
+          </label>
+          <input id="receipt_number" name="receipt_number" className="input" />
+        </div>
       </div>
       <div>
         <label className="label" htmlFor="notes">

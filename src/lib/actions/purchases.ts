@@ -41,6 +41,7 @@ export async function createPurchaseAction(
   const purchaseDate = String(formData.get("purchase_date") ?? "");
   const vendor = String(formData.get("vendor") ?? "").trim() || null;
   const notes = String(formData.get("notes") ?? "").trim() || null;
+  const receiptNumber = String(formData.get("receipt_number") ?? "").trim() || null;
 
   if (!category || !itemName || !purchaseDate) {
     return { error: "Category, item, and date are required." };
@@ -83,8 +84,8 @@ export async function createPurchaseAction(
 
   const inserted = await db`
     INSERT INTO purchases
-      (farm_id, species_id, batch_id, category, item_name, quantity, unit, unit_price, total_amount, purchase_date, vendor, notes, created_by)
-    VALUES (${user.farm_id}, ${speciesId}, ${batchId}, ${category}, ${itemName}, ${quantity}, ${unit}, ${unitPrice}, ${totalAmount}, ${purchaseDate}, ${vendor}, ${notes}, ${user.id})
+      (farm_id, species_id, batch_id, category, item_name, quantity, unit, unit_price, total_amount, purchase_date, vendor, notes, receipt_number, created_by)
+    VALUES (${user.farm_id}, ${speciesId}, ${batchId}, ${category}, ${itemName}, ${quantity}, ${unit}, ${unitPrice}, ${totalAmount}, ${purchaseDate}, ${vendor}, ${notes}, ${receiptNumber}, ${user.id})
     RETURNING id
   `;
   const purchaseId = (inserted[0] as { id: number }).id;

@@ -41,6 +41,7 @@ export async function createSaleAction(
   const buyer = String(formData.get("buyer") ?? "").trim() || null;
   let incomeHead = String(formData.get("income_head") ?? "").trim() || null;
   const notes = String(formData.get("notes") ?? "").trim() || null;
+  const receiptNumber = String(formData.get("receipt_number") ?? "").trim() || null;
 
   if (!itemName || !saleDate) {
     return { error: "Item and date are required." };
@@ -83,8 +84,8 @@ export async function createSaleAction(
 
   const inserted = await db`
     INSERT INTO sales
-      (farm_id, species_id, batch_id, item_name, quantity, unit, unit_price, total_amount, sale_date, buyer, income_head, notes, created_by)
-    VALUES (${user.farm_id}, ${speciesId}, ${batchId}, ${itemName}, ${quantity}, ${unit}, ${unitPrice}, ${totalAmount}, ${saleDate}, ${buyer}, ${incomeHead}, ${notes}, ${user.id})
+      (farm_id, species_id, batch_id, item_name, quantity, unit, unit_price, total_amount, sale_date, buyer, income_head, notes, receipt_number, created_by)
+    VALUES (${user.farm_id}, ${speciesId}, ${batchId}, ${itemName}, ${quantity}, ${unit}, ${unitPrice}, ${totalAmount}, ${saleDate}, ${buyer}, ${incomeHead}, ${notes}, ${receiptNumber}, ${user.id})
     RETURNING id
   `;
   const saleId = (inserted[0] as { id: number }).id;
