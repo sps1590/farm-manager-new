@@ -3,11 +3,13 @@ import { getDb } from "./db";
 import {
   emptyPermissions,
   type AssetRow,
+  type AttendanceRow,
   type AuditLogRow,
   type BatchRow,
   type EmployeeRow,
   type FarmRow,
   type FinancialSummary,
+  type LeaveApplicationRow,
   type MedicalRecordRow,
   type PartnerInvestmentRow,
   type PartnerStatus,
@@ -631,6 +633,36 @@ export async function listSalaryPayments(
       SELECT * FROM salary_payments
       WHERE employee_id = ${employeeId} AND farm_id = ${farmId}
       ORDER BY pay_period DESC, id DESC
+    `
+  );
+}
+
+export async function listAttendance(
+  employeeId: number,
+  farmId: number,
+  limit = 30
+): Promise<AttendanceRow[]> {
+  const db = await getDb();
+  return plainRows<AttendanceRow>(
+    await db`
+      SELECT * FROM attendance
+      WHERE employee_id = ${employeeId} AND farm_id = ${farmId}
+      ORDER BY date DESC
+      LIMIT ${limit}
+    `
+  );
+}
+
+export async function listLeaveApplications(
+  employeeId: number,
+  farmId: number
+): Promise<LeaveApplicationRow[]> {
+  const db = await getDb();
+  return plainRows<LeaveApplicationRow>(
+    await db`
+      SELECT * FROM leave_applications
+      WHERE employee_id = ${employeeId} AND farm_id = ${farmId}
+      ORDER BY start_date DESC, id DESC
     `
   );
 }

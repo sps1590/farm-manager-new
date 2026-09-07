@@ -274,4 +274,36 @@ export const SCHEMA_STATEMENTS: string[] = [
     created_at TEXT NOT NULL DEFAULT ${NOW_TEXT}
   )`,
   `CREATE INDEX IF NOT EXISTS idx_assets_farm ON assets(farm_id)`,
+
+  // One row per employee per day -- UNIQUE(employee_id, date) makes "mark
+  // today" an upsert (INSERT ... ON CONFLICT), so re-marking the same day
+  // corrects it rather than creating a duplicate.
+  `CREATE TABLE IF NOT EXISTS attendance (
+    id SERIAL PRIMARY KEY,
+    farm_id INTEGER REFERENCES farms(id) ON DELETE CASCADE,
+    employee_id INTEGER NOT NULL REFERENCES employees(id) ON DELETE CASCADE,
+    date TEXT NOT NULL,
+    status TEXT NOT NULL CHECK(status IN ('present','absent','half_day','leave')),
+    notes TEXT,
+    created_by INTEGER REFERENCES users(id),
+    created_at TEXT NOT NULL DEFAULT ${NOW_TEXT},
+    UNIQUE(employee_id, date)
+  )`,
+  `CREATE INDEX IF NOT EXISTS idx_attendance_farm ON attendance(farm_id)`,
+  `CREATE INDEX IF NOT EXISTS idx_attendance_employee ON attendance(employee_id)`,
+
+  `CREATE TABLE IF NOT EXISTS leave_applications (
+    id SERIAL PRIMARY KEY,
+    farm_id INTEGER REFERENCES farms(id) ON DELETE CASCADE,
+    employee_id INTEGER NOT NULL REFERENCES employees(id) ON DELETE CASCADE,
+    leave_type TEXT NOT NULL CHECK(leave_type IN ('casual','sick','earned','unpaid','other')),
+    start_date TEXT NOT NULL,
+    end_date TEXT NOT NULL,
+    status TEXT NOT NULL DEFAULT 'pending' CHECK(status IN ('pending','approved','rejected')),
+    reason TEXT,
+    created_by INTEGER REFERENCES users(id),
+    created_at TEXT NOT NULL DEFAULT ${NOW_TEXT}
+  )`,
+  `CREATE INDEX IF NOT EXISTS idx_leave_farm ON leave_applications(farm_id)`,
+  `CREATE INDEX IF NOT EXISTS idx_leave_employee ON leave_applications(employee_id)`,
 ];

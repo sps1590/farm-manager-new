@@ -309,6 +309,15 @@ Database: Neon Postgres, provisioned through Vercel's Storage integration.
 
 ## Changelog
 
+- **2026-09-07** — Tier 1, item 4: HR attendance and leave. Employee
+  detail page gained a daily attendance mark (present/absent/half-day/
+  leave, one row per employee per day via `UNIQUE(employee_id, date)` +
+  `ON CONFLICT` upsert, so re-marking today corrects it) and a leave
+  application/approve-or-reject flow (casual/sick/earned/unpaid/other).
+  New `attendance` and `leave_applications` tables, both wired into the
+  audit trail. Feeding attendance into payroll cost is explicitly out of
+  scope for this pass — `getFinancialSummary()` still counts only paid
+  salary payments.
 - **2026-09-07** — Tier 1, item 3: alerts beyond vaccinations. The
   dashboard's vaccination-due card is now a general "Alerts" card
   (`listPendingSalaryAlerts()` in repo.ts) that also surfaces pending/

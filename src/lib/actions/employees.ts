@@ -5,6 +5,15 @@ import { revalidatePath } from "next/cache";
 import { getDb } from "../db";
 import { requireOwner } from "../permissions";
 import { logAudit } from "../audit";
+import type { AttendanceStatus, LeaveType } from "../types";
+
+const ATTENDANCE_STATUSES: AttendanceStatus[] = [
+  "present",
+  "absent",
+  "half_day",
+  "leave",
+];
+const LEAVE_TYPES: LeaveType[] = ["casual", "sick", "earned", "unpaid", "other"];
 
 export interface EmployeeFormState {
   error?: string;
@@ -223,4 +232,108 @@ export async function deleteSalaryPaymentAction(formData: FormData) {
   }
   revalidatePath(`/employees/${employeeId}`);
   revalidatePath("/reports");
+}
+
+// One row per employee per day (UNIQUE(employee_id, date) in schema.ts) --
+// marking the same day again corrects it via ON CONFLICT rather than
+// creating a duplicate.
+export async function markAttendanceAction(formData: FormData) {
+  const owner = await requireOwner();
+  const db = await getDb();
+  const employeeId = Number(formData.get("employee_id"));
+  const date = String(formData.get("date") ?? "");
+  const status = String(formData.get("status") ?? "") as AttendanceStatus;
+
+  if (!employeeId || !date || !ATTENDANCE_STATUSES.includes(status)) return;
+
+  const result = await db`
+    INSERT INTO attendance (farm_id, employee_id, date, status, created_by)
+    VALUES (${owner.farm_id}, ${employeeId}, ${date}, ${status}, ${owner.id})
+    ON CONFLICT (employee_id, date) DO UPDATE SET status = EXCLUDED.status
+    RETURNING id
+  `;
+  const attendanceId = (result[0] as { id: number }).id;
+
+  await logAudit({
+    farmId: owner.farm_id,
+    userId: owner.id,
+    action: "update",
+    module: "attendance",
+    recordId: attendanceId,
+    summary: `Marked attendance ${date}: ${status}`,
+    after: { employeeId, date, status },
+  });
+
+  revalidatePath(`/employees/${employeeId}`);
+}
+
+export interface LeaveFormState {
+  error?: string;
+}
+
+export async function applyLeaveAction(
+  _prevState: LeaveFormState,
+  formData: FormData
+): Promise<LeaveFormState> {
+  const owner = await requireOwner();
+  const db = await getDb();
+
+  const employeeId = Number(formData.get("employee_id"));
+  const leaveType = String(formData.get("leave_type")) as LeaveType;
+  const startDate = String(formData.get("start_date") ?? "");
+  const endDate = String(formData.get("end_date") ?? "");
+  const reason = String(formData.get("reason") ?? "").trim() || null;
+
+  if (!LEAVE_TYPES.includes(leaveType) || !startDate || !endDate) {
+    return { error: "employees.error.invalidLeave" };
+  }
+  if (endDate < startDate) {
+    return { error: "employees.error.invalidLeave" };
+  }
+
+  const inserted = await db`
+    INSERT INTO leave_applications (farm_id, employee_id, leave_type, start_date, end_date, reason, created_by)
+    VALUES (${owner.farm_id}, ${employeeId}, ${leaveType}, ${startDate}, ${endDate}, ${reason}, ${owner.id})
+    RETURNING id
+  `;
+  const leaveId = (inserted[0] as { id: number }).id;
+
+  await logAudit({
+    farmId: owner.farm_id,
+    userId: owner.id,
+    action: "create",
+    module: "leave",
+    recordId: leaveId,
+    summary: `Applied leave: ${leaveType} ${startDate} to ${endDate}`,
+    after: { employeeId, leaveType, startDate, endDate, reason },
+  });
+
+  revalidatePath(`/employees/${employeeId}`);
+  return {};
+}
+
+export async function updateLeaveStatusAction(formData: FormData) {
+  const owner = await requireOwner();
+  const db = await getDb();
+  const id = Number(formData.get("id"));
+  const employeeId = Number(formData.get("employee_id"));
+  const status = String(formData.get("status") ?? "");
+  if (status !== "approved" && status !== "rejected") return;
+
+  await db`
+    UPDATE leave_applications SET status = ${status}
+    WHERE id = ${id} AND farm_id = ${owner.farm_id}
+  `;
+
+  await logAudit({
+    farmId: owner.farm_id,
+    userId: owner.id,
+    action: "update",
+    module: "leave",
+    recordId: id,
+    summary: `Leave application ${status}`,
+    after: { status },
+  });
+
+  revalidatePath(`/employees/${employeeId}`);
 }

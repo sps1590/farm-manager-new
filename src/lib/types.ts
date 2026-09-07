@@ -247,6 +247,31 @@ export interface AssetRow {
   created_at: string;
 }
 
+export type AttendanceStatus = "present" | "absent" | "half_day" | "leave";
+
+export interface AttendanceRow {
+  id: number;
+  employee_id: number;
+  date: string;
+  status: AttendanceStatus;
+  notes: string | null;
+  created_at: string;
+}
+
+export type LeaveType = "casual" | "sick" | "earned" | "unpaid" | "other";
+export type LeaveStatus = "pending" | "approved" | "rejected";
+
+export interface LeaveApplicationRow {
+  id: number;
+  employee_id: number;
+  leave_type: LeaveType;
+  start_date: string;
+  end_date: string;
+  status: LeaveStatus;
+  reason: string | null;
+  created_at: string;
+}
+
 export type AuditAction = "create" | "update" | "delete";
 
 export interface AuditLogRow {
