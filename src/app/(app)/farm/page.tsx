@@ -1,9 +1,16 @@
 import Link from "next/link";
 import { Users, Handshake, UserCog, LineChart, type LucideIcon } from "lucide-react";
 import { requireOwner } from "@/lib/permissions";
-import { getFarm, listSpecies, getEnabledSpeciesIds } from "@/lib/repo";
+import { getFarm, listSpecies, getEnabledSpeciesIds, listExpenseCategories, listIncomeHeads } from "@/lib/repo";
 import { updateFarmDetailsAction, setEnabledSpeciesAction } from "@/lib/actions/farm";
+import {
+  createExpenseCategoryAction,
+  toggleExpenseCategoryStatusAction,
+  createIncomeHeadAction,
+  toggleIncomeHeadStatusAction,
+} from "@/lib/actions/categories";
 import { t, type DictKey } from "@/lib/i18n";
+import CategoryManager from "@/components/forms/CategoryManager";
 
 const SETUP_LINKS: Array<{ href: string; labelKey: DictKey; icon: LucideIcon }> = [
   { href: "/team", labelKey: "nav.team", icon: Users },
@@ -16,10 +23,12 @@ export default async function FarmProfilePage() {
   const owner = await requireOwner();
   const lang = owner.language;
 
-  const [farm, allSpecies, enabledIds] = await Promise.all([
+  const [farm, allSpecies, enabledIds, expenseCategories, incomeHeads] = await Promise.all([
     getFarm(owner.farm_id),
     listSpecies(),
     getEnabledSpeciesIds(owner.farm_id),
+    listExpenseCategories(owner.farm_id),
+    listIncomeHeads(owner.farm_id),
   ]);
 
   return (
@@ -99,6 +108,28 @@ export default async function FarmProfilePage() {
             {t(lang, "common.save")}
           </button>
         </form>
+      </div>
+
+      <div className="card space-y-4 p-6">
+        <h2 className="font-semibold text-foreground">{t(lang, "categories.expenseTitle")}</h2>
+        <p className="text-sm text-muted">{t(lang, "categories.expenseHint")}</p>
+        <CategoryManager
+          lang={lang}
+          categories={expenseCategories}
+          createAction={createExpenseCategoryAction}
+          toggleAction={toggleExpenseCategoryStatusAction}
+        />
+      </div>
+
+      <div className="card space-y-4 p-6">
+        <h2 className="font-semibold text-foreground">{t(lang, "categories.incomeTitle")}</h2>
+        <p className="text-sm text-muted">{t(lang, "categories.incomeHint")}</p>
+        <CategoryManager
+          lang={lang}
+          categories={incomeHeads}
+          createAction={createIncomeHeadAction}
+          toggleAction={toggleIncomeHeadStatusAction}
+        />
       </div>
 
       <div>

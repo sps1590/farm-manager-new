@@ -5,17 +5,7 @@ import { revalidatePath } from "next/cache";
 import { getDb } from "../db";
 import { requirePermission } from "../permissions";
 import { logAudit } from "../audit";
-import type { PurchaseCategory } from "../types";
 import type { FormState } from "./batches";
-
-const CATEGORIES: PurchaseCategory[] = [
-  "animal",
-  "feed",
-  "medicine",
-  "utility",
-  "equipment",
-  "other",
-];
 
 export async function createPurchaseAction(
   _prevState: FormState,
@@ -24,7 +14,7 @@ export async function createPurchaseAction(
   const user = await requirePermission("purchases", "create");
   const db = await getDb();
 
-  const category = String(formData.get("category")) as PurchaseCategory;
+  const category = String(formData.get("category") ?? "").trim();
   const itemName = String(formData.get("item_name") ?? "").trim();
   let speciesId = formData.get("species_id")
     ? Number(formData.get("species_id"))
@@ -44,11 +34,18 @@ export async function createPurchaseAction(
   const vendor = String(formData.get("vendor") ?? "").trim() || null;
   const notes = String(formData.get("notes") ?? "").trim() || null;
 
-  if (!CATEGORIES.includes(category) || !itemName || !purchaseDate) {
+  if (!category || !itemName || !purchaseDate) {
     return { error: "Category, item, and date are required." };
   }
   if (!totalAmount || totalAmount <= 0) {
     return { error: "Total amount must be greater than zero." };
+  }
+
+  const categoryRows = await db`
+    SELECT 1 FROM expense_categories WHERE farm_id = ${user.farm_id} AND key = ${category}
+  `;
+  if (categoryRows.length === 0) {
+    return { error: "Category, item, and date are required." };
   }
 
   if (!speciesId && batchId) {

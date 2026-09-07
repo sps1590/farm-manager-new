@@ -4,9 +4,11 @@ import {
   listLedgerEntries,
   listPartnerProfitLoss,
   listSpecies,
+  listExpenseCategories,
   getFinancialSummary,
 } from "@/lib/repo";
-import { t, type DictKey } from "@/lib/i18n";
+import { t } from "@/lib/i18n";
+import { categoryLabel } from "@/lib/labels";
 import { formatCurrency } from "@/lib/format";
 
 export default async function LedgerPage({
@@ -19,10 +21,11 @@ export default async function LedgerPage({
   const { from, to } = await searchParams;
   const range = from || to ? { from, to } : undefined;
 
-  const [entries, partners, species, summary] = await Promise.all([
+  const [entries, partners, species, categories, summary] = await Promise.all([
     listLedgerEntries(owner.farm_id, range),
     listPartnerProfitLoss(owner.farm_id, range),
     listSpecies(),
+    listExpenseCategories(owner.farm_id),
     getFinancialSummary(owner.farm_id, range),
   ]);
   const speciesById = Object.fromEntries(species.map((s) => [s.id, s]));
@@ -126,7 +129,7 @@ export default async function LedgerPage({
                       <td className="px-4 py-2">{e.itemName}</td>
                       <td className="px-4 py-2 text-muted">
                         {e.category
-                          ? t(lang, `purchases.category.${e.category}` as DictKey)
+                          ? categoryLabel(e.category, categories, lang)
                           : sp
                             ? `${sp.icon} ${lang === "bn" ? sp.name_bn : sp.name_en}`
                             : "—"}

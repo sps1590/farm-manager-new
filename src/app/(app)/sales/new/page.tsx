@@ -1,20 +1,21 @@
 import { requirePermission } from "@/lib/permissions";
-import { listEnabledSpecies, listBatchesForSelect } from "@/lib/repo";
+import { listEnabledSpecies, listBatchesForSelect, listIncomeHeads } from "@/lib/repo";
 import { t } from "@/lib/i18n";
 import NewSaleForm from "@/components/forms/NewSaleForm";
 
 export default async function NewSalePage() {
   const user = await requirePermission("sales", "create");
   const lang = user.language;
-  const [species, batches] = await Promise.all([
+  const [species, batches, incomeHeads] = await Promise.all([
     listEnabledSpecies(user.farm_id),
     listBatchesForSelect(user.farm_id),
+    listIncomeHeads(user.farm_id, true),
   ]);
 
   return (
     <div className="max-w-2xl space-y-6">
       <h1 className="text-2xl font-bold text-foreground">{t(lang, "sales.new")}</h1>
-      <NewSaleForm lang={lang} species={species} batches={batches} />
+      <NewSaleForm lang={lang} species={species} batches={batches} incomeHeads={incomeHeads} />
     </div>
   );
 }

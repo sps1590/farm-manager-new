@@ -5,7 +5,7 @@ import { createSaleAction } from "@/lib/actions/sales";
 import type { FormState } from "@/lib/actions/batches";
 import SubmitButton from "@/components/SubmitButton";
 import { t, type DictKey } from "@/lib/i18n";
-import type { BatchRow, Language, SpeciesRow } from "@/lib/types";
+import type { BatchRow, CategoryRow, Language, SpeciesRow } from "@/lib/types";
 import { useAutoTotal } from "@/hooks/useAutoTotal";
 
 const initialState: FormState = {};
@@ -30,10 +30,12 @@ export default function NewSaleForm({
   lang,
   species,
   batches,
+  incomeHeads,
 }: {
   lang: Language;
   species: SpeciesRow[];
   batches: Array<Pick<BatchRow, "id" | "name" | "species_id" | "status">>;
+  incomeHeads: CategoryRow[];
 }) {
   const [state, formAction] = useActionState(createSaleAction, initialState);
   const speciesById = Object.fromEntries(species.map((s) => [s.id, s]));
@@ -132,6 +134,19 @@ export default function NewSaleForm({
             {t(lang, "sales.buyer")}
           </label>
           <input id="buyer" name="buyer" className="input" />
+        </div>
+        <div>
+          <label className="label" htmlFor="income_head">
+            {t(lang, "sales.incomeHead")}
+          </label>
+          <select id="income_head" name="income_head" className="input" defaultValue="">
+            <option value="">{t(lang, "common.none")}</option>
+            {incomeHeads.map((h) => (
+              <option key={h.key} value={h.key}>
+                {lang === "bn" ? h.name_bn : h.name_en}
+              </option>
+            ))}
+          </select>
         </div>
         <div>
           <label className="label" htmlFor="quantity">

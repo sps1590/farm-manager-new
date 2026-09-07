@@ -4,21 +4,22 @@ import { useActionState } from "react";
 import { createPurchaseAction } from "@/lib/actions/purchases";
 import type { FormState } from "@/lib/actions/batches";
 import SubmitButton from "@/components/SubmitButton";
-import { t, type DictKey } from "@/lib/i18n";
-import type { BatchRow, Language, SpeciesRow } from "@/lib/types";
+import { t } from "@/lib/i18n";
+import type { BatchRow, CategoryRow, Language, SpeciesRow } from "@/lib/types";
 import { useAutoTotal } from "@/hooks/useAutoTotal";
 
 const initialState: FormState = {};
-const CATEGORIES = ["animal", "feed", "medicine", "utility", "equipment", "other"] as const;
 
 export default function NewPurchaseForm({
   lang,
   species,
   batches,
+  categories,
 }: {
   lang: Language;
   species: SpeciesRow[];
   batches: Array<Pick<BatchRow, "id" | "name" | "species_id" | "status">>;
+  categories: CategoryRow[];
 }) {
   const [state, formAction] = useActionState(createPurchaseAction, initialState);
   const speciesById = Object.fromEntries(species.map((s) => [s.id, s]));
@@ -31,9 +32,9 @@ export default function NewPurchaseForm({
           {t(lang, "purchases.category")}
         </label>
         <select id="category" name="category" required className="input" defaultValue="feed">
-          {CATEGORIES.map((c) => (
-            <option key={c} value={c}>
-              {t(lang, `purchases.category.${c}` as DictKey)}
+          {categories.map((c) => (
+            <option key={c.key} value={c.key}>
+              {lang === "bn" ? c.name_bn : c.name_en}
             </option>
           ))}
         </select>

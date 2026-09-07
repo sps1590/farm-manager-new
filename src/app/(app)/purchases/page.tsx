@@ -1,17 +1,19 @@
 import Link from "next/link";
 import { requirePermission, hasPermission } from "@/lib/permissions";
-import { listPurchases, listSpecies } from "@/lib/repo";
+import { listPurchases, listSpecies, listExpenseCategories } from "@/lib/repo";
 import { deletePurchaseAction } from "@/lib/actions/purchases";
-import { t, type DictKey } from "@/lib/i18n";
+import { t } from "@/lib/i18n";
+import { categoryLabel } from "@/lib/labels";
 import ConfirmForm from "@/components/forms/ConfirmForm";
 import { formatCurrency } from "@/lib/format";
 
 export default async function PurchasesPage() {
   const user = await requirePermission("purchases", "view");
   const lang = user.language;
-  const [purchases, species] = await Promise.all([
+  const [purchases, species, categories] = await Promise.all([
     listPurchases(user.farm_id),
     listSpecies(),
+    listExpenseCategories(user.farm_id),
   ]);
   const speciesById = Object.fromEntries(species.map((s) => [s.id, s]));
   const canCreate = hasPermission(user, "purchases", "create");
@@ -58,7 +60,7 @@ export default async function PurchasesPage() {
                   <tr key={p.id} className="border-b border-border last:border-0">
                     <td className="px-4 py-2 text-muted">{p.purchase_date}</td>
                     <td className="px-4 py-2">
-                      {t(lang, `purchases.category.${p.category}` as DictKey)}
+                      {categoryLabel(p.category, categories, lang)}
                     </td>
                     <td className="px-4 py-2">{p.item_name}</td>
                     <td className="px-4 py-2 text-muted">

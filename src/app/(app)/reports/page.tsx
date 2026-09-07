@@ -1,7 +1,8 @@
 import Link from "next/link";
 import { requireOwner } from "@/lib/permissions";
-import { getFinancialSummary, getExpenseBreakdown } from "@/lib/repo";
-import { t, type DictKey } from "@/lib/i18n";
+import { getFinancialSummary, getExpenseBreakdown, listExpenseCategories } from "@/lib/repo";
+import { t } from "@/lib/i18n";
+import { categoryLabel } from "@/lib/labels";
 import { formatCurrency } from "@/lib/format";
 
 export default async function ReportsPage({
@@ -14,9 +15,10 @@ export default async function ReportsPage({
   const { from, to } = await searchParams;
   const range = from || to ? { from, to } : undefined;
 
-  const [summary, breakdown] = await Promise.all([
+  const [summary, breakdown, categories] = await Promise.all([
     getFinancialSummary(owner.farm_id, range),
     getExpenseBreakdown(owner.farm_id, range),
+    listExpenseCategories(owner.farm_id),
   ]);
 
   return (
@@ -105,7 +107,7 @@ export default async function ReportsPage({
                 {breakdown.map((b) => (
                   <tr key={b.category} className="border-b border-border last:border-0">
                     <td className="px-4 py-2">
-                      {t(lang, `purchases.category.${b.category}` as DictKey)}
+                      {categoryLabel(b.category, categories, lang)}
                     </td>
                     <td className="px-4 py-2 text-right font-medium">
                       {t(lang, "common.currency")}

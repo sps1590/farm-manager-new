@@ -247,6 +247,33 @@ can register and use the same deployment, each with their own team and data.
   (`src/app/(app)/employees/*`), so it's a fifth thing an owner manages the
   same way as Team/Partners/Employees.
 
+**Configurable cost/income heads** (done 2026-09-07, Tier 1 item 5 — the
+plan's highest-risk item, touching the live `purchases.category` field)
+- New farm-scoped `expense_categories` and `income_heads` tables, each
+  seeded per-farm on first run with exactly the six/three values that used
+  to be hard-coded (`animal`/`feed`/`medicine`/`utility`/`equipment`/`other`
+  and `sale`/`subsidy`/`other`), so every existing purchase/sale row still
+  matches a valid value with zero data change. The old `CHECK` constraint on
+  `purchases.category` is dropped; validity is now enforced at the
+  application layer (`createPurchaseAction`/`createSaleAction` check the
+  submitted key against the farm's active rows). `category === "animal"`
+  still triggers the batch-stock increment on purchase, unchanged, since the
+  `key` values themselves didn't change — only their display names are now
+  owner-editable.
+- Owner-only management UI added to Farm Profile (`/farm`): two new cards
+  ("Expense categories", "Income heads"), each with an inline add form
+  (English + Bangla name) and an active/inactive toggle per row
+  (`CategoryManager.tsx`, reused for both). Deactivated categories/heads
+  stay selectable-looking on historical records (still resolve via
+  `categoryLabel()`) but drop out of the New purchase/New sale dropdowns.
+- Sales gained a new optional "Income head" field (`sales.income_head`
+  column), purchases' existing category field is unchanged in the UI, just
+  now backed by farm-editable data instead of a fixed array. Purchases,
+  Reports and the Profit/Loss ledger all display categories via the new
+  `categoryLabel(key, categories, lang)` helper (`src/lib/labels.ts`)
+  instead of the old fixed `purchases.category.<key>` i18n lookup. All
+  create/toggle actions are audit-logged.
+
 ## What's NOT built yet — future phases
 
 **Phase 2 — people and money** (done as of 2026-09-02 — see HR and
@@ -309,6 +336,14 @@ Database: Neon Postgres, provisioned through Vercel's Storage integration.
 
 ## Changelog
 
+- **2026-09-07** — Tier 1, item 5: configurable cost/income heads. New
+  `expense_categories`/`income_heads` tables (farm-scoped, seeded with
+  today's fixed values so no existing purchase/sale is invalidated),
+  `CHECK` constraint on `purchases.category` dropped in favor of
+  application-layer validation, new owner-only management cards on Farm
+  Profile to add/deactivate categories and income heads, new optional
+  Income head field on the sale form, and `categoryLabel()` replacing the
+  old fixed-enum i18n lookup on Purchases/Reports/Profit-Loss table.
 - **2026-09-07** — Tier 1, item 4: HR attendance and leave. Employee
   detail page gained a daily attendance mark (present/absent/half-day/
   leave, one row per employee per day via `UNIQUE(employee_id, date)` +

@@ -95,19 +95,13 @@ export interface BatchRow {
   updated_at: string;
 }
 
-export type PurchaseCategory =
-  | "animal"
-  | "feed"
-  | "medicine"
-  | "utility"
-  | "equipment"
-  | "other";
-
+// Category is farm-configurable master data (expense_categories table) as
+// of the Tier 1 categories work -- no longer a fixed union.
 export interface PurchaseRow {
   id: number;
   species_id: number | null;
   batch_id: number | null;
-  category: PurchaseCategory;
+  category: string;
   item_name: string;
   quantity: number | null;
   unit: string | null;
@@ -131,6 +125,7 @@ export interface SaleRow {
   total_amount: number;
   sale_date: string;
   buyer: string | null;
+  income_head: string | null;
   notes: string | null;
   created_by: number | null;
   created_at: string;
@@ -270,6 +265,17 @@ export interface LeaveApplicationRow {
   status: LeaveStatus;
   reason: string | null;
   created_at: string;
+}
+
+export type CategoryStatus = "active" | "inactive";
+
+export interface CategoryRow {
+  id: number;
+  key: string;
+  name_en: string;
+  name_bn: string;
+  status: CategoryStatus;
+  sort_order: number;
 }
 
 export type AuditAction = "create" | "update" | "delete";

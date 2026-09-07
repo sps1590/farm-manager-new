@@ -6,6 +6,7 @@ import {
   type AttendanceRow,
   type AuditLogRow,
   type BatchRow,
+  type CategoryRow,
   type EmployeeRow,
   type FarmRow,
   type FinancialSummary,
@@ -664,6 +665,46 @@ export async function listLeaveApplications(
       WHERE employee_id = ${employeeId} AND farm_id = ${farmId}
       ORDER BY start_date DESC, id DESC
     `
+  );
+}
+
+export async function listExpenseCategories(
+  farmId: number,
+  activeOnly = false
+): Promise<CategoryRow[]> {
+  const db = await getDb();
+  return plainRows<CategoryRow>(
+    activeOnly
+      ? await db`
+          SELECT id, key, name_en, name_bn, status, sort_order FROM expense_categories
+          WHERE farm_id = ${farmId} AND status = 'active'
+          ORDER BY sort_order, id
+        `
+      : await db`
+          SELECT id, key, name_en, name_bn, status, sort_order FROM expense_categories
+          WHERE farm_id = ${farmId}
+          ORDER BY sort_order, id
+        `
+  );
+}
+
+export async function listIncomeHeads(
+  farmId: number,
+  activeOnly = false
+): Promise<CategoryRow[]> {
+  const db = await getDb();
+  return plainRows<CategoryRow>(
+    activeOnly
+      ? await db`
+          SELECT id, key, name_en, name_bn, status, sort_order FROM income_heads
+          WHERE farm_id = ${farmId} AND status = 'active'
+          ORDER BY sort_order, id
+        `
+      : await db`
+          SELECT id, key, name_en, name_bn, status, sort_order FROM income_heads
+          WHERE farm_id = ${farmId}
+          ORDER BY sort_order, id
+        `
   );
 }
 

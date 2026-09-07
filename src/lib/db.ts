@@ -76,6 +76,45 @@ async function backfillOwnerPartners() {
   await sql`UPDATE users SET is_partner = true WHERE role = 'owner' AND is_partner = false`;
 }
 
+const DEFAULT_EXPENSE_CATEGORIES = [
+  { key: "animal", name_en: "Animal / Livestock", name_bn: "প্রাণী", sort_order: 1 },
+  { key: "feed", name_en: "Feed", name_bn: "খাদ্য", sort_order: 2 },
+  { key: "medicine", name_en: "Medicine", name_bn: "ওষুধ", sort_order: 3 },
+  { key: "utility", name_en: "Utility", name_bn: "ইউটিলিটি", sort_order: 4 },
+  { key: "equipment", name_en: "Equipment", name_bn: "যন্ত্রপাতি", sort_order: 5 },
+  { key: "other", name_en: "Other", name_bn: "অন্যান্য", sort_order: 6 },
+];
+
+const DEFAULT_INCOME_HEADS = [
+  { key: "sale", name_en: "Sale", name_bn: "বিক্রয়", sort_order: 1 },
+  { key: "subsidy", name_en: "Subsidy / Grant", name_bn: "ভর্তুকি / অনুদান", sort_order: 2 },
+  { key: "other", name_en: "Other income", name_bn: "অন্যান্য আয়", sort_order: 3 },
+];
+
+// Every existing farm's purchases.category values already match these six
+// keys exactly (they were the hard-coded CHECK constraint list), so seeding
+// them here changes zero existing data -- it just gives the owner rows to
+// edit going forward. Runs per-farm, idempotent via ON CONFLICT DO NOTHING.
+async function backfillCategoryDefaults() {
+  const farms = await sql`SELECT id FROM farms`;
+  for (const farm of farms as { id: number }[]) {
+    for (const c of DEFAULT_EXPENSE_CATEGORIES) {
+      await sql`
+        INSERT INTO expense_categories (farm_id, key, name_en, name_bn, sort_order)
+        VALUES (${farm.id}, ${c.key}, ${c.name_en}, ${c.name_bn}, ${c.sort_order})
+        ON CONFLICT (farm_id, key) DO NOTHING
+      `;
+    }
+    for (const h of DEFAULT_INCOME_HEADS) {
+      await sql`
+        INSERT INTO income_heads (farm_id, key, name_en, name_bn, sort_order)
+        VALUES (${farm.id}, ${h.key}, ${h.name_en}, ${h.name_bn}, ${h.sort_order})
+        ON CONFLICT (farm_id, key) DO NOTHING
+      `;
+    }
+  }
+}
+
 async function ensureSchema(): Promise<void> {
   for (const statement of SCHEMA_STATEMENTS) {
     await sql.query(statement);
@@ -83,6 +122,7 @@ async function ensureSchema(): Promise<void> {
   await seedSpecies();
   await seedDefaultFarmAndOwner();
   await backfillOwnerPartners();
+  await backfillCategoryDefaults();
 }
 
 export async function getDb() {

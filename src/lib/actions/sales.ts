@@ -31,6 +31,7 @@ export async function createSaleAction(
   const totalAmount = Number(formData.get("total_amount") ?? 0);
   const saleDate = String(formData.get("sale_date") ?? "");
   const buyer = String(formData.get("buyer") ?? "").trim() || null;
+  let incomeHead = String(formData.get("income_head") ?? "").trim() || null;
   const notes = String(formData.get("notes") ?? "").trim() || null;
 
   if (!itemName || !saleDate) {
@@ -38,6 +39,13 @@ export async function createSaleAction(
   }
   if (!totalAmount || totalAmount <= 0) {
     return { error: "Total amount must be greater than zero." };
+  }
+
+  if (incomeHead) {
+    const headRows = await db`
+      SELECT 1 FROM income_heads WHERE farm_id = ${user.farm_id} AND key = ${incomeHead}
+    `;
+    if (headRows.length === 0) incomeHead = null;
   }
 
   if (!speciesId && batchId) {
@@ -49,8 +57,8 @@ export async function createSaleAction(
 
   const inserted = await db`
     INSERT INTO sales
-      (farm_id, species_id, batch_id, item_name, quantity, unit, unit_price, total_amount, sale_date, buyer, notes, created_by)
-    VALUES (${user.farm_id}, ${speciesId}, ${batchId}, ${itemName}, ${quantity}, ${unit}, ${unitPrice}, ${totalAmount}, ${saleDate}, ${buyer}, ${notes}, ${user.id})
+      (farm_id, species_id, batch_id, item_name, quantity, unit, unit_price, total_amount, sale_date, buyer, income_head, notes, created_by)
+    VALUES (${user.farm_id}, ${speciesId}, ${batchId}, ${itemName}, ${quantity}, ${unit}, ${unitPrice}, ${totalAmount}, ${saleDate}, ${buyer}, ${incomeHead}, ${notes}, ${user.id})
     RETURNING id
   `;
   const saleId = (inserted[0] as { id: number }).id;
@@ -62,7 +70,7 @@ export async function createSaleAction(
     module: "sales",
     recordId: saleId,
     summary: `Recorded sale: ${itemName} (${totalAmount})`,
-    after: { itemName, quantity, unitPrice, totalAmount, saleDate, buyer },
+    after: { itemName, quantity, unitPrice, totalAmount, saleDate, buyer, incomeHead },
   });
 
   if (batchId && quantity) {

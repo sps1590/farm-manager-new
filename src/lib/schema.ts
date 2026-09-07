@@ -165,6 +165,9 @@ export const SCHEMA_STATEMENTS: string[] = [
   `CREATE INDEX IF NOT EXISTS idx_purchases_batch ON purchases(batch_id)`,
   `CREATE INDEX IF NOT EXISTS idx_purchases_date ON purchases(purchase_date)`,
   `CREATE INDEX IF NOT EXISTS idx_purchases_farm ON purchases(farm_id)`,
+  // category is now farm-configurable master data (expense_categories below)
+  // rather than a fixed set -- validated at the application layer instead.
+  `ALTER TABLE purchases DROP CONSTRAINT IF EXISTS purchases_category_check`,
 
   `CREATE TABLE IF NOT EXISTS sales (
     id SERIAL PRIMARY KEY,
@@ -183,10 +186,42 @@ export const SCHEMA_STATEMENTS: string[] = [
     created_at TEXT NOT NULL DEFAULT ${NOW_TEXT}
   )`,
   `ALTER TABLE sales ADD COLUMN IF NOT EXISTS farm_id INTEGER REFERENCES farms(id) ON DELETE CASCADE`,
+  `ALTER TABLE sales ADD COLUMN IF NOT EXISTS income_head TEXT`,
   `CREATE INDEX IF NOT EXISTS idx_sales_species ON sales(species_id)`,
   `CREATE INDEX IF NOT EXISTS idx_sales_batch ON sales(batch_id)`,
   `CREATE INDEX IF NOT EXISTS idx_sales_date ON sales(sale_date)`,
   `CREATE INDEX IF NOT EXISTS idx_sales_farm ON sales(farm_id)`,
+
+  // Farm-configurable master data replacing the old hard-coded purchase
+  // category list and adding an equivalent for income. "key" is the stable
+  // value stored on purchases.category / sales.income_head; name_en/name_bn
+  // are what the owner sees and can edit. Deactivated (status='inactive')
+  // heads are never deleted so historical records keep resolving correctly.
+  `CREATE TABLE IF NOT EXISTS expense_categories (
+    id SERIAL PRIMARY KEY,
+    farm_id INTEGER NOT NULL REFERENCES farms(id) ON DELETE CASCADE,
+    key TEXT NOT NULL,
+    name_en TEXT NOT NULL,
+    name_bn TEXT NOT NULL,
+    status TEXT NOT NULL DEFAULT 'active' CHECK(status IN ('active','inactive')),
+    sort_order INTEGER NOT NULL DEFAULT 0,
+    created_at TEXT NOT NULL DEFAULT ${NOW_TEXT},
+    UNIQUE(farm_id, key)
+  )`,
+  `CREATE INDEX IF NOT EXISTS idx_expense_categories_farm ON expense_categories(farm_id)`,
+
+  `CREATE TABLE IF NOT EXISTS income_heads (
+    id SERIAL PRIMARY KEY,
+    farm_id INTEGER NOT NULL REFERENCES farms(id) ON DELETE CASCADE,
+    key TEXT NOT NULL,
+    name_en TEXT NOT NULL,
+    name_bn TEXT NOT NULL,
+    status TEXT NOT NULL DEFAULT 'active' CHECK(status IN ('active','inactive')),
+    sort_order INTEGER NOT NULL DEFAULT 0,
+    created_at TEXT NOT NULL DEFAULT ${NOW_TEXT},
+    UNIQUE(farm_id, key)
+  )`,
+  `CREATE INDEX IF NOT EXISTS idx_income_heads_farm ON income_heads(farm_id)`,
 
   `CREATE TABLE IF NOT EXISTS medical_records (
     id SERIAL PRIMARY KEY,
