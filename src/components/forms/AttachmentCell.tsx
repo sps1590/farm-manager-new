@@ -23,7 +23,7 @@ export default function AttachmentCell({
       {attachments.map((a) => (
         <div key={a.id} className="flex items-center gap-2 whitespace-nowrap">
           <a
-            href={a.url}
+            href={`/api/attachments/${a.id}`}
             target="_blank"
             rel="noopener noreferrer"
             className="text-xs text-primary hover:underline"

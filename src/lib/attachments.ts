@@ -1,6 +1,7 @@
 import "server-only";
 import { put, del } from "@vercel/blob";
 import { getDb } from "./db";
+import type { Module } from "./types";
 
 export const ATTACHMENT_MAX_SIZE = 10 * 1024 * 1024;
 export const ATTACHMENT_ALLOWED_TYPES = new Set([
@@ -11,13 +12,22 @@ export const ATTACHMENT_ALLOWED_TYPES = new Set([
   "application/pdf",
 ]);
 
+export const MODULE_BY_RELATED_TABLE: Record<string, Module> = {
+  purchases: "purchases",
+  sales: "sales",
+  medical_records: "medical",
+};
+
 export async function uploadAttachmentBlob(
   file: File,
   farmId: number,
   relatedTable: string
 ): Promise<string> {
+  // Private access: a farm's receipts/vet-bill photos are only ever readable
+  // through the authenticated /api/attachments/[id] route below, matching
+  // the rest of the app's farm-scoped, never-a-bare-public-link convention.
   const blob = await put(`farm-${farmId}/${relatedTable}/${Date.now()}-${file.name}`, file, {
-    access: "public",
+    access: "private",
   });
   return blob.url;
 }

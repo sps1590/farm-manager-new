@@ -4,17 +4,11 @@ import { revalidatePath } from "next/cache";
 import { del } from "@vercel/blob";
 import { getDb } from "../db";
 import { requirePermission } from "../permissions";
-import type { Module } from "../types";
-
-const MODULE_BY_TABLE: Record<string, Module> = {
-  purchases: "purchases",
-  sales: "sales",
-  medical_records: "medical",
-};
+import { MODULE_BY_RELATED_TABLE } from "../attachments";
 
 export async function deleteAttachmentAction(formData: FormData) {
   const relatedTable = String(formData.get("related_table") ?? "");
-  const moduleName = MODULE_BY_TABLE[relatedTable];
+  const moduleName = MODULE_BY_RELATED_TABLE[relatedTable];
   if (!moduleName) return;
 
   const user = await requirePermission(moduleName, "delete");
