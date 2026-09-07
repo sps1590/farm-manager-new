@@ -20,11 +20,18 @@ export async function createProductionRecordAction(
   const batchId = formData.get("batch_id")
     ? Number(formData.get("batch_id"))
     : null;
+  const animalId = formData.get("animal_id") ? Number(formData.get("animal_id")) : null;
   const productType = String(formData.get("product_type") ?? "").trim();
   const recordDate = String(formData.get("record_date") ?? "");
   const quantity = Number(formData.get("quantity") ?? 0);
   const unit = String(formData.get("unit") ?? "").trim() || null;
   const notes = String(formData.get("notes") ?? "").trim() || null;
+  const amTotal = formData.get("am_total") ? Number(formData.get("am_total")) : null;
+  const noonTotal = formData.get("noon_total") ? Number(formData.get("noon_total")) : null;
+  const pmTotal = formData.get("pm_total") ? Number(formData.get("pm_total")) : null;
+  const consumedQuantity = formData.get("consumed_quantity")
+    ? Number(formData.get("consumed_quantity"))
+    : null;
 
   if (!productType || !recordDate) {
     return { error: "Product type and date are required." };
@@ -42,8 +49,10 @@ export async function createProductionRecordAction(
 
   const inserted = await db`
     INSERT INTO production_records
-      (farm_id, species_id, batch_id, product_type, record_date, quantity, unit, notes, created_by)
-    VALUES (${user.farm_id}, ${speciesId}, ${batchId}, ${productType}, ${recordDate}, ${quantity}, ${unit}, ${notes}, ${user.id})
+      (farm_id, species_id, batch_id, animal_id, product_type, record_date, quantity, unit, notes,
+       am_total, noon_total, pm_total, consumed_quantity, created_by)
+    VALUES (${user.farm_id}, ${speciesId}, ${batchId}, ${animalId}, ${productType}, ${recordDate}, ${quantity}, ${unit}, ${notes},
+      ${amTotal}, ${noonTotal}, ${pmTotal}, ${consumedQuantity}, ${user.id})
     RETURNING id
   `;
   const recordId = (inserted[0] as { id: number }).id;

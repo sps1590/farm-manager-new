@@ -24,6 +24,7 @@ export default async function ProductionPage({
   const speciesById = Object.fromEntries(species.map((s) => [s.id, s]));
   const canCreate = hasPermission(user, "production", "create");
   const canDelete = hasPermission(user, "production", "delete");
+  const hasConsumed = records.some((r) => r.consumed_quantity != null);
 
   return (
     <div className="space-y-6">
@@ -73,6 +74,9 @@ export default async function ProductionPage({
                 <th className="px-4 py-2 font-medium">{t(lang, "production.productType")}</th>
                 <th className="px-4 py-2 font-medium">{t(lang, "common.species")}</th>
                 <th className="px-4 py-2 font-medium text-right">{t(lang, "common.quantity")}</th>
+                {hasConsumed && (
+                  <th className="px-4 py-2 font-medium text-right">{t(lang, "production.consumed")}</th>
+                )}
                 <th className="px-4 py-2 font-medium" />
               </tr>
             </thead>
@@ -89,6 +93,13 @@ export default async function ProductionPage({
                     <td className="px-4 py-2 text-right font-medium">
                       {formatQuantity(r.quantity)} {r.unit || ""}
                     </td>
+                    {hasConsumed && (
+                      <td className="px-4 py-2 text-right text-muted">
+                        {r.consumed_quantity != null
+                          ? `${formatQuantity(r.consumed_quantity)} ${r.unit || ""}`
+                          : "—"}
+                      </td>
+                    )}
                     <td className="px-4 py-2 text-right">
                       {canDelete && (
                         <ConfirmForm
