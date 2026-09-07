@@ -3,6 +3,7 @@ import { requireUser } from "@/lib/auth";
 import {
   dashboardSummary,
   listUpcomingMedical,
+  listPendingSalaryAlerts,
   recentActivity,
   listSpecies,
   listPartners,
@@ -15,17 +16,43 @@ import { formatCurrency, formatQuantity } from "@/lib/format";
 export default async function DashboardPage() {
   const user = await requireUser();
   const lang = user.language;
-  const [farm, summary, upcoming, activity, speciesList, ownerPartners, ownPartnership] =
-    await Promise.all([
-      getFarm(user.farm_id),
-      dashboardSummary(user.farm_id),
-      listUpcomingMedical(user.farm_id, 14),
-      recentActivity(user.farm_id, 8),
-      listSpecies(),
-      user.role === "owner" ? listPartners(user.farm_id) : Promise.resolve(null),
-      user.is_partner ? getPartner(user.id, user.farm_id) : Promise.resolve(null),
-    ]);
+  const [
+    farm,
+    summary,
+    upcoming,
+    salaryAlerts,
+    activity,
+    speciesList,
+    ownerPartners,
+    ownPartnership,
+  ] = await Promise.all([
+    getFarm(user.farm_id),
+    dashboardSummary(user.farm_id),
+    listUpcomingMedical(user.farm_id, 14),
+    user.role === "owner" ? listPendingSalaryAlerts(user.farm_id) : Promise.resolve([]),
+    recentActivity(user.farm_id, 8),
+    listSpecies(),
+    user.role === "owner" ? listPartners(user.farm_id) : Promise.resolve(null),
+    user.is_partner ? getPartner(user.id, user.farm_id) : Promise.resolve(null),
+  ]);
   const speciesById = Object.fromEntries(speciesList.map((s) => [s.id, s]));
+
+  const alerts = [
+    ...upcoming.map((m) => ({
+      key: `medical-${m.id}`,
+      icon: "💉",
+      label: m.title,
+      meta: m.next_due_date ?? "",
+      href: "/medical",
+    })),
+    ...salaryAlerts.map((s) => ({
+      key: `salary-${s.id}`,
+      icon: "💰",
+      label: `${s.employee_name} — ${s.pay_period}`,
+      meta: `${t(lang, "common.currency")}${formatCurrency(s.amount)}`,
+      href: `/employees/${s.employee_id}`,
+    })),
+  ];
 
   return (
     <div className="space-y-8">
@@ -157,23 +184,27 @@ export default async function DashboardPage() {
       <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
         <div className="card p-4">
           <h2 className="mb-3 font-semibold text-foreground">
-            {t(lang, "dashboard.upcomingMedical")}
+            {t(lang, "dashboard.alerts")}
           </h2>
-          {upcoming.length === 0 ? (
-            <p className="text-sm text-muted">{t(lang, "dashboard.noUpcoming")}</p>
+          {alerts.length === 0 ? (
+            <p className="text-sm text-muted">{t(lang, "dashboard.noAlerts")}</p>
           ) : (
-            <ul className="space-y-2">
-              {upcoming.map((m) => (
-                <li key={m.id} className="flex items-center justify-between text-sm">
-                  <span className="text-foreground">{m.title}</span>
-                  <span className="text-muted">{m.next_due_date}</span>
+            <ul className="space-y-1">
+              {alerts.map((a) => (
+                <li key={a.key}>
+                  <Link
+                    href={a.href}
+                    className="flex items-center justify-between rounded-lg px-2 py-1.5 text-sm hover:bg-surface-hover"
+                  >
+                    <span className="text-foreground">
+                      {a.icon} {a.label}
+                    </span>
+                    <span className="text-muted">{a.meta}</span>
+                  </Link>
                 </li>
               ))}
             </ul>
           )}
-          <Link href="/medical" className="mt-3 inline-block text-sm font-medium text-primary">
-            {t(lang, "nav.medical")} →
-          </Link>
         </div>
 
         <div className="card p-4">

@@ -186,6 +186,33 @@ export async function listUpcomingMedical(
   );
 }
 
+export interface SalaryAlertRow {
+  id: number;
+  employee_id: number;
+  employee_name: string;
+  pay_period: string;
+  amount: number;
+}
+
+// Pending (unpaid) salary payments -- surfaced as a dashboard alert so an
+// owner doesn't discover a missed payroll run only when an employee asks.
+export async function listPendingSalaryAlerts(
+  farmId: number,
+  limit = 10
+): Promise<SalaryAlertRow[]> {
+  const db = await getDb();
+  return plainRows<SalaryAlertRow>(
+    await db`
+      SELECT sp.id, sp.employee_id, e.name as employee_name, sp.pay_period, sp.amount
+      FROM salary_payments sp
+      JOIN employees e ON e.id = sp.employee_id
+      WHERE sp.farm_id = ${farmId} AND sp.status = 'pending'
+      ORDER BY sp.pay_period ASC
+      LIMIT ${limit}
+    `
+  );
+}
+
 export interface SpeciesSummary {
   species: SpeciesRow;
   activeBatches: number;

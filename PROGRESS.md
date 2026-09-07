@@ -309,6 +309,13 @@ Database: Neon Postgres, provisioned through Vercel's Storage integration.
 
 ## Changelog
 
+- **2026-09-07** — Tier 1, item 3: alerts beyond vaccinations. The
+  dashboard's vaccination-due card is now a general "Alerts" card
+  (`listPendingSalaryAlerts()` in repo.ts) that also surfaces pending/
+  unpaid salary payments for the owner, each entry linking straight to the
+  record. Lease/document-expiry alerts stay deferred until file
+  attachments (item 6) give them something with an expiry date to hang
+  off.
 - **2026-09-07** — Tier 1, item 2: simple asset register. New `/assets`
   module (owner-only) for equipment, vehicles and machinery — name,
   category, purchase date, cost, active/inactive status — mirroring the
