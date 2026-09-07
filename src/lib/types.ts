@@ -228,6 +228,25 @@ export interface SalaryPaymentRow {
   created_at: string;
 }
 
+export type AssetCategory =
+  | "vehicle"
+  | "machinery"
+  | "equipment"
+  | "building"
+  | "tool"
+  | "other";
+
+export interface AssetRow {
+  id: number;
+  name: string;
+  category: AssetCategory;
+  purchase_date: string | null;
+  cost: number | null;
+  status: "active" | "inactive";
+  notes: string | null;
+  created_at: string;
+}
+
 export type AuditAction = "create" | "update" | "delete";
 
 export interface AuditLogRow {

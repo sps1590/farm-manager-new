@@ -260,4 +260,18 @@ export const SCHEMA_STATEMENTS: string[] = [
   )`,
   `CREATE INDEX IF NOT EXISTS idx_audit_log_farm ON audit_log(farm_id)`,
   `CREATE INDEX IF NOT EXISTS idx_audit_log_created ON audit_log(created_at)`,
+
+  `CREATE TABLE IF NOT EXISTS assets (
+    id SERIAL PRIMARY KEY,
+    farm_id INTEGER REFERENCES farms(id) ON DELETE CASCADE,
+    name TEXT NOT NULL,
+    category TEXT NOT NULL CHECK(category IN ('vehicle','machinery','equipment','building','tool','other')),
+    purchase_date TEXT,
+    cost DOUBLE PRECISION,
+    status TEXT NOT NULL DEFAULT 'active' CHECK(status IN ('active','inactive')),
+    notes TEXT,
+    created_by INTEGER REFERENCES users(id),
+    created_at TEXT NOT NULL DEFAULT ${NOW_TEXT}
+  )`,
+  `CREATE INDEX IF NOT EXISTS idx_assets_farm ON assets(farm_id)`,
 ];

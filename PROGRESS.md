@@ -240,6 +240,13 @@ can register and use the same deployment, each with their own team and data.
   can't break the feature it's observing. Team/user management isn't
   wired in yet (out of this pass's approved scope).
 
+**Asset register** (done 2026-09-07, Tier 1 item 2)
+- `/assets` (owner-only): name, category (vehicle/machinery/equipment/
+  building/tool/other), purchase date, cost, active/inactive status.
+  Straight copy of the Employees module's file structure
+  (`src/app/(app)/employees/*`), so it's a fifth thing an owner manages the
+  same way as Team/Partners/Employees.
+
 ## What's NOT built yet — future phases
 
 **Phase 2 — people and money** (done as of 2026-09-02 — see HR and
@@ -302,6 +309,11 @@ Database: Neon Postgres, provisioned through Vercel's Storage integration.
 
 ## Changelog
 
+- **2026-09-07** — Tier 1, item 2: simple asset register. New `/assets`
+  module (owner-only) for equipment, vehicles and machinery — name,
+  category, purchase date, cost, active/inactive status — mirroring the
+  Employees list/new/detail/edit pattern exactly. Wired into the audit
+  trail from the start.
 - **2026-09-07** — Tier 1, item 1: audit trail. New append-only
   `audit_log` table + `logAudit()` helper (`src/lib/audit.ts`, swallows its
   own errors so logging can never break the action it observes), wired into

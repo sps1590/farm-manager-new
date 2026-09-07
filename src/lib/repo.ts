@@ -2,6 +2,7 @@ import "server-only";
 import { getDb } from "./db";
 import {
   emptyPermissions,
+  type AssetRow,
   type AuditLogRow,
   type BatchRow,
   type EmployeeRow,
@@ -605,6 +606,22 @@ export async function listSalaryPayments(
       ORDER BY pay_period DESC, id DESC
     `
   );
+}
+
+export async function listAssets(farmId: number): Promise<AssetRow[]> {
+  const db = await getDb();
+  return plainRows<AssetRow>(
+    await db`SELECT * FROM assets WHERE farm_id = ${farmId} ORDER BY created_at DESC, id DESC`
+  );
+}
+
+export async function getAsset(
+  id: number,
+  farmId: number
+): Promise<AssetRow | undefined> {
+  const db = await getDb();
+  const rows = await db`SELECT * FROM assets WHERE id = ${id} AND farm_id = ${farmId}`;
+  return plainRow<AssetRow>(rows[0]);
 }
 
 export async function listAuditLog(
