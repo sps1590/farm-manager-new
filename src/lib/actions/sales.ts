@@ -65,8 +65,12 @@ export async function createSaleAction(
     if (!ATTACHMENT_ALLOWED_TYPES.has(attachmentFile.type)) {
       return { error: "Attachment must be an image or PDF." };
     }
-    attachmentUrl = await uploadAttachmentBlob(attachmentFile, user.farm_id, "sales");
-    attachmentFilename = attachmentFile.name;
+    try {
+      attachmentUrl = await uploadAttachmentBlob(attachmentFile, user.farm_id, "sales");
+      attachmentFilename = attachmentFile.name;
+    } catch (err) {
+      return { error: `Attachment upload failed: ${(err as Error).message}` };
+    }
   }
 
   if (!speciesId && batchId) {

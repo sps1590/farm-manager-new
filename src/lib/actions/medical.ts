@@ -61,8 +61,12 @@ export async function createMedicalRecordAction(
     if (!ATTACHMENT_ALLOWED_TYPES.has(attachmentFile.type)) {
       return { error: "Attachment must be an image or PDF." };
     }
-    attachmentUrl = await uploadAttachmentBlob(attachmentFile, user.farm_id, "medical_records");
-    attachmentFilename = attachmentFile.name;
+    try {
+      attachmentUrl = await uploadAttachmentBlob(attachmentFile, user.farm_id, "medical_records");
+      attachmentFilename = attachmentFile.name;
+    } catch (err) {
+      return { error: `Attachment upload failed: ${(err as Error).message}` };
+    }
   }
 
   const inserted = await db`
