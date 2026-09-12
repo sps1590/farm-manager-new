@@ -159,7 +159,7 @@ export default async function DashboardPage() {
       ) : (
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
           {summary.map((row) => {
-            const net = row.sales30d - row.purchases30d;
+            const net = row.salesTotal - row.purchasesTotal;
             return (
               <div key={row.species.id} className="card p-4">
                 <div className="flex items-center gap-2">
@@ -178,15 +178,15 @@ export default async function DashboardPage() {
                     {formatQuantity(row.currentStock)}{" "}
                     {lang === "bn" ? row.species.unit_bn : row.species.unit_en}
                   </dd>
-                  <dt className="text-muted">{t(lang, "dashboard.last30Purchases")}</dt>
+                  <dt className="text-muted">{t(lang, "dashboard.totalPurchases")}</dt>
                   <dd className="text-right font-medium text-foreground">
-                    {t(lang, "common.currency")}{formatCurrency(row.purchases30d)}
+                    {t(lang, "common.currency")}{formatCurrency(row.purchasesTotal)}
                   </dd>
-                  <dt className="text-muted">{t(lang, "dashboard.last30Sales")}</dt>
+                  <dt className="text-muted">{t(lang, "dashboard.totalSales")}</dt>
                   <dd className="text-right font-medium text-foreground">
-                    {t(lang, "common.currency")}{formatCurrency(row.sales30d)}
+                    {t(lang, "common.currency")}{formatCurrency(row.salesTotal)}
                   </dd>
-                  <dt className="text-muted">{t(lang, "dashboard.net30")}</dt>
+                  <dt className="text-muted">{t(lang, "dashboard.netTotal")}</dt>
                   <dd
                     className={`text-right font-semibold ${
                       net >= 0 ? "text-primary" : "text-danger"

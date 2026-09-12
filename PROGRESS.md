@@ -103,9 +103,10 @@ can register and use the same deployment, each with their own team and data.
 **Phase 1 — core farm tracking** (done, verified 2026-09-01)
 - Bilingual toggle (Bengali/English), persisted on the user record.
 - Dashboard: per-species summary cards (active batches, current stock,
-  30-day purchases/sales/net), upcoming vaccinations/due tasks (next 14
-  days), recent activity feed. Visible to every authenticated farm member,
-  not permission-gated (read-only, no mutations).
+  all-time purchases/sales/net — total since the batch/purchase/sale was
+  first recorded, not a rolling window), upcoming vaccinations/due tasks
+  (next 14 days), recent activity feed. Visible to every authenticated farm
+  member, not permission-gated (read-only, no mutations).
 - Batches (`/batches`): create/list/view/close/delete.
 - Purchases (`/purchases`): category/item/species/optional batch/
   quantity/unit/price/vendor/date/notes. Buying animals into an existing
@@ -559,6 +560,14 @@ Database: Neon Postgres, provisioned through Vercel's Storage integration.
 
 ## Changelog
 
+- **2026-09-12** — Dashboard per-species cards now show all-time
+  purchases/sales/net (from the beginning) instead of a rolling 30-day
+  window, per owner feedback that the 30-day figures looked empty/wrong
+  for species with only older activity. `dashboardSummary()` in
+  `src/lib/repo.ts` dropped its `since` date filter; `SpeciesSummary`
+  fields renamed `purchases30d`/`sales30d` → `purchasesTotal`/`salesTotal`.
+  i18n keys `dashboard.last30Purchases`/`last30Sales`/`net30` renamed to
+  `dashboard.totalPurchases`/`totalSales`/`netTotal` (en + bn).
 - **2026-09-08** — Post-Tier-3 gap-fill, all four owner-approved items
   from a reference-app screenshot review: medical records optionally
   linked to a specific tracked animal (informational only, shown on

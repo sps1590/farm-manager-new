@@ -453,16 +453,13 @@ export interface SpeciesSummary {
   species: SpeciesRow;
   activeBatches: number;
   currentStock: number;
-  purchases30d: number;
-  sales30d: number;
+  purchasesTotal: number;
+  salesTotal: number;
 }
 
 export async function dashboardSummary(farmId: number): Promise<SpeciesSummary[]> {
   const db = await getDb();
   const species = await listEnabledSpecies(farmId);
-  const since = new Date(Date.now() - 30 * 86400000)
-    .toISOString()
-    .slice(0, 10);
 
   return Promise.all(
     species.map(async (sp) => {
@@ -479,7 +476,7 @@ export async function dashboardSummary(farmId: number): Promise<SpeciesSummary[]
         (
           await db`
             SELECT COALESCE(SUM(total_amount),0) as total FROM purchases
-            WHERE farm_id = ${farmId} AND species_id = ${sp.id} AND purchase_date >= ${since}
+            WHERE farm_id = ${farmId} AND species_id = ${sp.id}
           `
         )[0]
       )!;
@@ -488,7 +485,7 @@ export async function dashboardSummary(farmId: number): Promise<SpeciesSummary[]
         (
           await db`
             SELECT COALESCE(SUM(total_amount),0) as total FROM sales
-            WHERE farm_id = ${farmId} AND species_id = ${sp.id} AND sale_date >= ${since}
+            WHERE farm_id = ${farmId} AND species_id = ${sp.id}
           `
         )[0]
       )!;
@@ -497,8 +494,8 @@ export async function dashboardSummary(farmId: number): Promise<SpeciesSummary[]
         species: sp,
         activeBatches: batchAgg.cnt,
         currentStock: batchAgg.stock,
-        purchases30d: purchaseAgg.total,
-        sales30d: saleAgg.total,
+        purchasesTotal: purchaseAgg.total,
+        salesTotal: saleAgg.total,
       };
     })
   );
